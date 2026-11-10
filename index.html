@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#15161a">
+  <meta name="description" content="Compare a photo of your drawing with its reference: side by side, stacked, or overlaid. Everything stays in your browser.">
+  <title>Drawing Compare</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body data-layout="side">
+
+  <header class="topbar">
+    <h1 class="brand">Drawing Compare</h1>
+
+    <fieldset class="segmented" aria-label="Layout">
+      <input type="radio" name="layout" id="layout-side" value="side" checked>
+      <label for="layout-side" title="Side by side (1)">Side</label>
+      <input type="radio" name="layout" id="layout-stacked" value="stacked">
+      <label for="layout-stacked" title="Stacked vertically (2)">Stacked</label>
+      <input type="radio" name="layout" id="layout-overlay" value="overlay">
+      <label for="layout-overlay" title="Overlay (3)">Overlay</label>
+    </fieldset>
+
+    <div class="group">
+      <button type="button" class="btn toggle" id="btn-link" aria-pressed="true" title="Sync pan and zoom across both images (L)">Link</button>
+      <button type="button" class="btn" id="btn-fit" title="Re-fit and re-center both images (F)">Fit all</button>
+      <button type="button" class="btn toggle" id="btn-grid" aria-pressed="false" title="Grid overlay (G)">Grid</button>
+      <button type="button" class="btn toggle" id="btn-gray" aria-pressed="false" title="Show both images in grayscale (V)">Gray all</button>
+    </div>
+
+    <div class="group push">
+      <button type="button" class="btn" id="btn-export" title="Download the current view as PNG (E)">Export</button>
+      <button type="button" class="btn" id="btn-clear-saved" title="Remove both images and saved settings from this browser">Clear saved images</button>
+      <button type="button" class="btn icon" id="btn-help" title="Keyboard shortcuts and help (?)" aria-label="Help">?</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <div class="panes">
+      <section class="pane" data-slot="drawing" aria-label="Drawing pane">
+        <canvas aria-label="Drawing view. Drag to pan, scroll or pinch to zoom, double-click to fit." tabindex="-1"></canvas>
+        <span class="pane-label" aria-hidden="true">Drawing</span>
+        <div class="dropzone">
+          <p class="dropzone-title">Drawing</p>
+          <p>Drop an image here, paste, or</p>
+          <div class="group">
+            <button type="button" class="btn" data-action="file">File</button>
+            <button type="button" class="btn" data-action="camera">Camera</button>
+            <button type="button" class="btn" data-action="paste">Paste</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="pane" data-slot="reference" aria-label="Reference pane">
+        <canvas aria-label="Reference view. Drag to pan, scroll or pinch to zoom, double-click to fit." tabindex="-1"></canvas>
+        <span class="pane-label" aria-hidden="true">Reference</span>
+        <div class="dropzone">
+          <p class="dropzone-title">Reference</p>
+          <p>Drop an image here, paste, or</p>
+          <div class="group">
+            <button type="button" class="btn" data-action="file">File</button>
+            <button type="button" class="btn" data-action="camera">Camera</button>
+            <button type="button" class="btn" data-action="paste">Paste</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="overlay-bar" id="overlay-bar" hidden>
+      <button type="button" class="btn" id="btn-swap" title="Swap which image is on top (O)">Top: Drawing</button>
+      <label class="range">
+        <span>Opacity</span>
+        <input type="range" id="opacity" min="0" max="100" step="1" value="50" aria-label="Top layer opacity">
+        <output for="opacity" id="opacity-out">50%</output>
+      </label>
+      <fieldset class="segmented small" id="move-target" aria-label="Which layer drag and zoom move">
+        <legend>Move</legend>
+        <input type="radio" name="move" id="move-drawing" value="drawing" checked>
+        <label for="move-drawing">Drawing</label>
+        <input type="radio" name="move" id="move-reference" value="reference">
+        <label for="move-reference">Reference</label>
+      </fieldset>
+      <span class="hint" id="move-hint">Unlink to move layers separately</span>
+    </div>
+
+    <div class="dock" id="dock"></div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <template id="strip-template">
+    <div class="strip" role="group">
+      <span class="strip-label"></span>
+      <span class="group">
+        <button type="button" class="btn" data-action="file" title="Load from a file">File</button>
+        <button type="button" class="btn" data-action="camera" title="Take a photo">Camera</button>
+        <button type="button" class="btn" data-action="paste" title="Paste from clipboard">Paste</button>
+      </span>
+      <span class="group needs-image">
+        <button type="button" class="btn toggle" data-action="flipH" aria-pressed="false" title="Mirror horizontally (M)">Mirror</button>
+        <button type="button" class="btn toggle" data-action="flipV" aria-pressed="false" title="Flip vertically (Shift+M)">Flip</button>
+        <button type="button" class="btn" data-action="rotate" title="Rotate 90° clockwise (R)">Rotate</button>
+        <button type="button" class="btn toggle" data-action="gray" aria-pressed="false" title="Grayscale (B)">Gray</button>
+        <button type="button" class="btn toggle" data-action="contrast" aria-pressed="false" title="Contrast boost (C)">Contrast</button>
+      </span>
+      <span class="group needs-image">
+        <button type="button" class="btn" data-action="reset" title="Re-fit and re-center (0)">Fit</button>
+        <button type="button" class="btn" data-action="clear" title="Remove this image">Clear</button>
+      </span>
+      <input type="file" accept="image/*" hidden>
+    </div>
+  </template>
+
+  <dialog id="camera-dialog" class="dialog" aria-labelledby="camera-title">
+    <h2 id="camera-title">Take a photo</h2>
+    <div class="camera-view">
+      <video autoplay playsinline muted></video>
+    </div>
+    <p class="camera-error" id="camera-error" hidden></p>
+    <div class="dialog-actions">
+      <label class="select">
+        <span>Camera</span>
+        <select id="camera-facing">
+          <option value="environment">Back</option>
+          <option value="user">Front</option>
+        </select>
+      </label>
+      <button type="button" class="btn primary" data-camera="capture" disabled>Capture</button>
+      <label class="btn" id="camera-fallback" hidden>
+        Choose photo…
+        <input type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <button type="button" class="btn" data-camera="cancel">Cancel</button>
+    </div>
+  </dialog>
+
+  <dialog id="help-dialog" class="dialog" aria-labelledby="help-title">
+    <h2 id="help-title">Drawing Compare</h2>
+    <p>Load a photo of your drawing and the reference you worked from, then compare them. Nothing leaves your browser.</p>
+    <ul class="plain">
+      <li><strong>Pan:</strong> drag. <strong>Zoom:</strong> scroll wheel or pinch. <strong>Fit:</strong> double-click a pane.</li>
+      <li><strong>Link</strong> keeps pan and zoom in sync; turn it off to move one image alone (in Overlay, pick which with <em>Move</em>).</li>
+      <li><strong>Load:</strong> drop a file anywhere on a pane, paste with Ctrl/⌘+V, or use File / Camera / Paste.</li>
+      <li><strong>Saved on this device:</strong> your images and view settings are kept in this browser's local storage (IndexedDB) so they come back after a reload. They are never uploaded. <em>Clear saved images</em> removes them.</li>
+    </ul>
+    <h3>Keyboard</h3>
+    <dl class="keys">
+      <dt>1 / 2 / 3</dt><dd>Side / Stacked / Overlay</dd>
+      <dt>L</dt><dd>Link pan &amp; zoom</dd>
+      <dt>F</dt><dd>Fit all</dd>
+      <dt>G</dt><dd>Grid</dd>
+      <dt>V</dt><dd>Gray all (values)</dd>
+      <dt>E</dt><dd>Export PNG</dd>
+      <dt>A</dt><dd>Switch active image</dd>
+      <dt>M / Shift+M</dt><dd>Mirror / flip active image</dd>
+      <dt>R / Shift+R</dt><dd>Rotate active image</dd>
+      <dt>B / C</dt><dd>Gray / contrast on active image</dd>
+      <dt>0</dt><dd>Fit active image</dd>
+      <dt>Arrows</dt><dd>Nudge (Shift = 10 px)</dd>
+      <dt>+ / −</dt><dd>Zoom</dd>
+      <dt>O</dt><dd>Overlay: swap top layer</dd>
+      <dt>[ / ]</dt><dd>Overlay: opacity</dd>
+      <dt>?</dt><dd>This help</dd>
+    </dl>
+    <div class="dialog-actions">
+      <button type="button" class="btn primary" data-close>Close</button>
+    </div>
+  </dialog>
+
+  <!-- Classic scripts (not ES modules) so the page also runs straight from file://. Order matters; app.js goes last. -->
+  <script defer src="./js/layer.js"></script>
+  <script defer src="./js/pane.js"></script>
+  <script defer src="./js/gestures.js"></script>
+  <script defer src="./js/loaders.js"></script>
+  <script defer src="./js/camera.js"></script>
+  <script defer src="./js/storage.js"></script>
+  <script defer src="./js/export.js"></script>
+  <script defer src="./js/app.js"></script>
+</body>
+</html>
