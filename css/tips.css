@@ -1,0 +1,31 @@
+/* Info bubbles (js/tips.js): ink paper with the toast's pencil hatch, a piece of tape, a small arrow. */
+
+.tip { position: fixed; z-index: 30; left: 0; top: 0; max-width: min(240px, calc(100vw - 12px)); padding: 6px 10px 7px;
+  background: var(--d-hatch), var(--ink); color: var(--paper); border-radius: var(--wobble-b);
+  box-shadow: 0 2px 0 rgba(42, 37, 33, .18); font: 12px/1.35 var(--sans); pointer-events: none;
+  opacity: 0; transform: translateY(3px); transition: opacity 120ms ease-out, transform 120ms ease-out; }
+.tip.show { opacity: 1; transform: none; }
+.tip[hidden] { display: none; }
+.tip-name { font: 600 13px/1.25 var(--serif); letter-spacing: .01em; }
+.tip-keys { margin-left: 8px; white-space: nowrap; }
+.tip kbd { display: inline-block; min-width: 17px; padding: 0 4px; margin-left: 2px; text-align: center; font: 11px/16px var(--mono);
+  color: var(--paper); background: rgba(236, 230, 218, .12); border: 1px solid rgba(236, 230, 218, .55); border-radius: 3px; }
+.tip-desc { display: block; margin-top: 2px; color: rgba(236, 230, 218, .86); }
+.tip-desc:empty { display: none; }
+.tip.is-off .tip-desc { font: italic 500 12px/1.35 var(--serif); color: var(--sinopia-chalk); }
+.tip::before { content: ""; position: absolute; left: -7px; top: -6px; width: 28px; height: 9px; background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(-7deg); }
+.tip::after { content: ""; position: absolute; width: 8px; height: 8px; background: var(--ink); transform: rotate(45deg); left: calc(var(--ax, 50%) - 4px); }
+.tip.is-above::after { bottom: -4px; }
+.tip.is-below::after { top: -4px; }
+.tip.is-left::after { left: auto; right: -4px; top: calc(var(--ay, 50%) - 4px); }
+.tip.is-right::after { left: -4px; top: calc(var(--ay, 50%) - 4px); }
+.tip.is-below::before { top: auto; bottom: -6px; }
+.tip.is-left::before, .tip.is-right::before { display: none; }
+@media (forced-colors: active) { .tip { border: 1px solid CanvasText; } .tip::before { display: none; } }
+
+/* Long-press on touch must not select text, call up the image menu or zoom. */
+:is(.btn, .tool, .segmented label, .shelf-count, .shelf-item) { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.shelf-item img { -webkit-user-drag: none; }
+/* Disabled buttons get no events of their own; the container does (tips.js finds them by position). */
+:is(.btn, .tool):disabled { pointer-events: none; }
+.dropzone .actions { pointer-events: auto; }
