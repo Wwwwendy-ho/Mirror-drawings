@@ -1,4 +1,6 @@
-# Drawing Compare
+# Drawn Onward
+
+*(Working name; see "Renaming the site" below.)*
 
 A small static web app for artists: load a photo of your drawing and the reference you worked from, then compare them side by side, stacked, or overlaid.
 
@@ -96,6 +98,8 @@ The Chrome / Edge row is well-established behaviour, but none of the rows has be
 ```
 index.html       markup, SVG icon sprite, dialogs, per-pane tools template
 css/style.css    warm paper theme, responsive layout, alignment dots
+css/decor.css    "sketchbook desk" decoration: dot-grid page, taped panes, pencil frames, scribble marks (chrome only; never drawn over an image)
+js/brand.js      the one place the site name lives (SITE.name, SITE.slug)
 js/app.js        state, UI wiring, persistence, shelf UI, alignment, retake, keyboard shortcuts
 js/align.js      auto-align: FFT correlation search, confidence, Web Worker plumbing
 js/compare.js    overlay compare modes: render planner, tinted bitmaps, outline edge map
@@ -112,3 +116,7 @@ js/export.js     compose panes into one PNG and download
 ## Browser support
 
 Current Chrome, Edge, Firefox and Safari (desktop and mobile). Grayscale/contrast use the Canvas `filter` property where available and fall back to per-pixel processing elsewhere.
+
+## Renaming the site
+
+Edit the two strings in `js/brand.js` (`SITE.name` and `SITE.slug`, the latter is the export file-name prefix). The static `<title>` and the two pre-script placeholders in `index.html` (`data-site-name`) only matter for no-JS and link previews; update them too if you care. Do **not** rename `DB_NAME` in `js/storage.js`: it is a storage key, and changing it hides every saved photo.

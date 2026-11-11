@@ -6,12 +6,13 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#ebe5d9">
   <meta name="description" content="Compare a photo of your drawing with its reference: side by side, stacked, or overlaid. Images stay on your device.">
-  <title>Drawing Compare</title>
+  <title>Drawn Onward</title><!-- static fallback; js/brand.js is the single source of the name -->
   <!-- Optional display face; everything falls back to system serifs if this doesn't load. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap">
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/decor.css">
 </head>
 <body data-layout="side">
 
@@ -47,13 +48,47 @@
     <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="M14.600 5.400 8.200 12l6.400 6.600"/></symbol>
     <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="M9.400 5.400 15.800 12l-6.400 6.600"/></symbol>
     <symbol id="i-reg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5"/><path d="M24 2v12M24 34v12M2 24h12M34 24h12"/></symbol>
+
+    <!-- Scribble set (d-*): same 1.6 round stroke, wobbly endpoints, overshot closes. Colour comes from .doodle. -->
+    <symbol id="d-twin" viewBox="0 0 26 20"><path d="M10.2 3.1C6.4 4.6 3.2 8.2 3.4 12.3c.2 3.1 3.3 4.9 6.9 4.2-.5-4.4-.5-8.9-.1-13.4l.9-.3"/><path d="M15.8 3.1c3.8 1.5 7 5.1 6.8 9.2-.2 3.1-3.3 4.9-6.9 4.2.5-4.4.5-8.9.1-13.4l-.9-.3" stroke-dasharray="2.4 2.2"/><path class="ax" d="M13 1.2v2.2M13 6v2.2M13 10.8v2.2M13 15.6v2.6"/></symbol>
+    <symbol id="d-margin" viewBox="0 0 132 28">
+      <g transform="rotate(-9 13 14)"><path d="M13.2 3.2 19.6 23 2.6 10.8l20.7-.5L6.5 23l6.6-19.6"/><path d="M13.8 3.6 20 23.4" opacity=".35"/></g>
+      <path d="M45 14.2a1.4 1.3 0 0 1 2.6.1 2.7 2.6 0 0 1-5.2-.2 4 3.9 0 0 1 7.9.2 5.3 5.2 0 0 1-10.5-.1 6.6 6.6 0 0 1 13.1.2"/>
+      <path d="M72 5.8C81.5 2.6 93.6 7.4 98 20.6"/><path d="M92.8 17.8l5.4 3.4.6-6.6"/>
+      <path d="M108 10.4 111 20.2M111.4 9.8l3 10.2M114.8 10.4 117.6 20"/><path class="ax" d="M119.6 10.2l2.8 9.6M122.2 9.6l3.1 10.4M125 10.4l2.6 9.4"/>
+    </symbol>
+    <symbol id="d-face-ink" viewBox="0 0 96 96">
+      <path d="M25 33.4C24.6 55.500 32.500 78.600 48.200 78.200"/><path d="M25.600 34C25.300 50 30 63 36 72" opacity=".35"/><path d="M25.2 33.4C19.6 21 27.4 8.8 48.3 8.6"/>
+      <path d="M26.400 31.200C34.200 29.600 43.600 23.600 47.900 13.800"/>
+      <path d="M25 40.400c-4.600-1.600-6.800 4.400-3.800 9.600 1.200 2.200 3 2.400 4 1.600"/>
+      <path d="M31 35.600c3.600-2.800 8.400-3 12.600-1.200"/>
+      <path d="M31.600 42.800c3-3.200 8.200-3.200 11.400-.2-3.200 3.200-8.400 3.200-11.400.2zM37.400 41.200a1.800 1.800 0 1 0 .1 0"/>
+      <path d="M47.600 44.600c-1 5.400-3.200 9-6 11.800 1.800 1.600 4.200 1.400 6.200.4"/>
+      <path d="M48 66.200c-3.200-1-7.400-.8-10.800 1.200M47.900 69.400c-2.500 1.400-5.900 1.200-8.300-.2"/>
+    </symbol>
+    <symbol id="d-pencil" viewBox="0 0 40 12"><path d="M1.2 6.100 8.200 2.400C16 2 24 2.300 31.400 2.200l-.2 7.600C23 10.100 15 9.700 8.100 9.800L1 6.300"/><path d="M3.300 5.100 2.600 6.100 3.400 7.100M8.200 6.100H31"/><path d="M31.400 2.200C36 1.800 38.600 3 38.800 6c-.3 3-2.800 4.300-7.600 3.800M34.200 2.100l-.3 7.900"/></symbol>
+    <symbol id="d-face-half" viewBox="0 0 96 96">
+      <g opacity=".45" stroke-dasharray="3 3.200"><path d="M48 8.600v73.800M23 43.200h50.400M41 57h30M36 66.600h36"/><path d="M48.400 8.600C69 8.800 76.200 21 71 33.400 71.400 55.500 63.500 78.600 47.800 78.200"/></g>
+      <use href="#d-face-ink"/>
+      <use href="#d-pencil" width="40" height="12" transform="translate(65 53) rotate(38) scale(.85) translate(0 -6)"/>
+    </symbol>
+    <symbol id="d-face-full" viewBox="0 0 96 96">
+      <use href="#d-face-ink"/><use href="#d-face-ink" transform="matrix(-1 0 0 1 96 0)"/>
+      <path d="M4.400 12.400V4.200h8M83.600 4.400l8 .1v8M91.800 83.600v8.200h-8.200M12.400 91.800l-8-.2v-8"/>
+    </symbol>
+    <symbol id="d-circles" viewBox="0 0 48 28"><path d="M27.800 14.200c.2 6.200-4.600 10.900-10.700 10.800C11 24.900 6.300 20.300 6.400 14 6.500 7.900 11.300 3.200 17.300 3.300c5.900.1 10.400 4.800 10.500 10.900l-.8 1"/><path d="M41.600 13.700c.3 6.100-4.500 11.100-10.600 11.200-6.200.1-10.900-4.700-10.900-10.800 0-6 4.700-10.900 10.700-11 5.900-.1 10.600 4.600 10.800 10.600l-.7.900" opacity=".6"/><path d="M24 11.200v5.600M21.200 14h5.600"/></symbol>
+    <symbol id="d-mirror" viewBox="0 0 20 24"><path d="M10.200 1.600C5.400 1.400 2.600 5.400 2.800 9.600c.2 4 3.200 6.900 7.200 6.900 4.200-.1 7.300-3.200 7.100-7.200-.2-4.100-3.200-7.300-7.200-7.500l-.5.100M10 16.700v3.600M8.600 20.400c.4 2 2.400 2.100 2.900 0"/><path d="M6.400 8c.2-1.600 1.200-2.600 2.600-3M6.800 10.600c.2.800.6 1.400 1.200 1.800" opacity=".6"/></symbol>
+    <symbol id="d-spark" viewBox="0 0 16 16"><path d="M3.200 9.800 1.400 11.900M6.300 6.200 5.200 2.200M10.400 6.900l3.200-3.300"/></symbol>
+    <symbol id="d-check" viewBox="0 0 16 16"><path d="M2.600 8.700c1.300 1.200 2.300 2.500 3.100 3.900C7.800 8.600 10.500 5.300 14 2.600"/></symbol>
   </svg>
 
   <div class="top">
     <header class="masthead">
-      <h1 class="brand">Drawing Compare</h1>
+      <!-- Name text is pre-JS filler: js/brand.js writes SITE.name into every [data-site-name]. -->
+      <h1 class="brand"><svg class="doodle brand-mark" aria-hidden="true"><use href="#d-twin"/></svg><span class="brand-name" data-site-name>Drawn Onward</span></h1>
       <p class="tagline">Your drawing beside its reference. Images never leave this device.</p>
     </header>
+    <svg class="doodle margin-doodle" viewBox="0 0 132 28" aria-hidden="true"><use href="#d-margin"/></svg>
 
     <nav class="toolbar" aria-label="Global controls">
       <fieldset class="segmented" aria-label="Layout">
@@ -107,7 +142,7 @@
           <canvas aria-label="Drawing view. Drag to pan, scroll or pinch to zoom, double-click to hide or show." tabindex="-1"></canvas>
           <div class="dropzone">
             <i class="crop tl"></i><i class="crop tr"></i><i class="crop bl"></i><i class="crop br"></i>
-            <svg class="reg" aria-hidden="true"><use href="#i-reg"/></svg>
+            <svg class="doodle empty-art" aria-hidden="true"><use href="#d-face-half"/></svg>
             <h3>Add your drawing</h3>
             <p>Drop a photo here, paste it, or</p>
             <div class="actions">
@@ -144,7 +179,7 @@
           <canvas aria-label="Reference view. Drag to pan, scroll or pinch to zoom, double-click to hide or show." tabindex="-1"></canvas>
           <div class="dropzone">
             <i class="crop tl"></i><i class="crop tr"></i><i class="crop bl"></i><i class="crop br"></i>
-            <svg class="reg" aria-hidden="true"><use href="#i-reg"/></svg>
+            <svg class="doodle empty-art" aria-hidden="true"><use href="#d-face-full"/></svg>
             <h3>Add the reference</h3>
             <p>Drop a photo here, paste it, or</p>
             <div class="actions">
@@ -250,7 +285,7 @@
   </dialog>
 
   <dialog id="help-dialog" class="dialog" aria-labelledby="help-title">
-    <h2 id="help-title">Drawing Compare</h2>
+    <h2 id="help-title" data-site-name>Drawn Onward</h2>
     <p>Load a photo of your drawing and the reference you worked from, then compare them. Nothing is uploaded.</p>
     <ul class="plain">
       <li><strong>Pan:</strong> drag. <strong>Zoom:</strong> scroll wheel or pinch. <strong>Hide / show:</strong> double-tap or double-click an image (or <kbd>H</kbd>) to flick it away and back, like blinking between the two. <strong>Fit:</strong> the <em>Fit</em> button or <kbd>0</kbd> for one image, <em>Fit all</em> or <kbd>F</kbd> for both.</li>
@@ -259,7 +294,7 @@
       <li><strong>Load:</strong> drop a file onto a pane, paste with Ctrl/⌘+V, or use the pane's own buttons. Every new photo is <em>added</em> to that pane's shelf (up to 12 photos each) and put on the easel; nothing is overwritten.</li>
       <li><strong>Shelves:</strong> once a pane holds two or more photos, its header shows <em>&lsaquo; 3 / 5 &rsaquo;</em>. The arrows (or <kbd>,</kbd> older and <kbd>.</kbd> newer, for the selected image) step through the photos in the order they were added; the count opens a strip of thumbnails. Each photo keeps its own mirror, zoom, placement and dots. <em>Remove</em> takes away the photo on the easel, and asks first. If a shelf is full or the browser is short of space, you are asked before anything is deleted.</li>
       <li><strong>Known limit:</strong> placement is saved per photo, not per pair. If you switch the reference to a different photo, the drawing keeps its own placement and may need <em>Align</em> again.</li>
-      <li><strong>Align:</strong> switch on <em>Dots</em> in each pane and tap the same feature in both images (one dot matches position; two also match size and rotation), then <em>Align</em> in the Drawing pane. <em>Auto</em> tries to do it for you, and only moves anything when the match is confident; a pencil sketch against a photo is often too different, so dots are the dependable way.</li>
+      <li><strong>Align<svg class="doodle inline-mark" aria-hidden="true"><use href="#d-circles"/></svg>:</strong> switch on <em>Dots</em> in each pane and tap the same feature in both images (one dot matches position; two also match size and rotation), then <em>Align</em> in the Drawing pane. <em>Auto</em> tries to do it for you, and only moves anything when the match is confident; a pencil sketch against a photo is often too different, so dots are the dependable way.</li>
       <li><strong>Retake:</strong> adding a new photo to a Drawing pane that already has one keeps the alignment: the new photo is matched to the previous one and inherits its placement. The old photo stays on the shelf, one step back. <em>Previous</em> flips to the photo just before the one on the easel.</li>
       <li><strong>Camera:</strong> the app asks for the camera at most once per session. After you take a photo the camera stays on standby for 2 minutes (a dot on the Camera button shows it) so the next shot is instant, then it is turned off. It is also turned off when you leave the page. Whether your browser remembers your answer for next time is up to the browser; see the README.</li>
       <li><strong>Saved on this device:</strong> your photos (as stored JPEG/PNG/WebP copies, usually 0.4 to 1 MB each) and view settings are kept in this browser's local storage (IndexedDB) so they come back after a reload. <em>Clear all saved photos</em> removes every one of them.</li>
@@ -274,7 +309,7 @@
       <dt>E</dt><dd>Export PNG</dd>
       <dt>A</dt><dd>Switch active image</dd>
       <dt>H</dt><dd>Hide / show active image</dd>
-      <dt>M / Shift+M</dt><dd>Mirror / flip active image</dd>
+      <dt>M / Shift+M</dt><dd>Mirror<svg class="doodle inline-mirror" aria-hidden="true"><use href="#d-mirror"/></svg> / flip active image</dd>
       <dt>R / Shift+R</dt><dd>Rotate active image</dd>
       <dt>B / C</dt><dd>Gray / contrast on active image</dd>
       <dt>D</dt><dd>Dots on active image</dd>
@@ -290,11 +325,13 @@
       <dt>?</dt><dd>This help</dd>
     </dl>
     <div class="dialog-actions">
+      <svg class="doodle help-pencil" aria-hidden="true"><use href="#d-pencil"/></svg>
       <button type="button" class="btn primary" data-close>Close</button>
     </div>
   </dialog>
 
   <!-- Classic scripts (not ES modules) so the page also runs straight from file://. Order matters; app.js goes last. -->
+  <script defer src="./js/brand.js"></script>
   <script defer src="./js/layer.js"></script>
   <script defer src="./js/pane.js"></script>
   <script defer src="./js/gestures.js"></script>
