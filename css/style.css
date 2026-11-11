@@ -435,14 +435,6 @@ body[data-layout="overlay"] .pane[data-slot="reference"] .pane-body { display: n
 .crop.tr { top: 6px; right: 6px; border-top-width: 1px; border-right-width: 1px; }
 .crop.bl { bottom: 6px; left: 6px; border-bottom-width: 1px; border-left-width: 1px; }
 .crop.br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
-.reg {
-  width: 44px; height: 44px;
-  margin-bottom: 6px;
-  fill: none;
-  stroke: rgba(243, 238, 229, 0.7);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-}
 .dropzone h3 { font: 600 20px/1.15 var(--serif); color: var(--on-grey); }
 .dropzone p { color: rgba(243, 238, 229, 0.78); }
 .dropzone .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
@@ -773,7 +765,6 @@ ul.plain li { margin-bottom: 5px; }
   .dropzone { padding: 18px; gap: 4px; }
   .dropzone h3 { font-size: 16px; }
   .dropzone p { font-size: 12px; }
-  .reg { width: 34px; height: 34px; margin-bottom: 2px; }
   .dropzone .btn { height: 36px; }
 
   .overlay-bar { gap: 6px 12px; padding: 6px 8px; }
