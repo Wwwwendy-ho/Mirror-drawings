@@ -11,21 +11,38 @@
    * Uses an <img>, which honours EXIF orientation in all current browsers.
    */
   async function decodeImage(blob, maxEdge = MAX_EDGE) {
-    const url = URL.createObjectURL(blob);
+    // createImageBitmap decodes off the rendering path (it does not stall in a
+    // background tab) and applies EXIF orientation; <img> is the fallback for
+    // browsers or formats where it fails.
+    let source = null;
+    let url = null;
     try {
-      const img = new Image();
-      img.src = url;
-      await img.decode();
-      const r = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+      if (typeof createImageBitmap === 'function') {
+        try {
+          source = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+        } catch {
+          source = null;
+        }
+      }
+      if (!source) {
+        url = URL.createObjectURL(blob);
+        source = new Image();
+        source.src = url;
+        await source.decode();
+      }
+      const sw = source.naturalWidth || source.width;
+      const sh = source.naturalHeight || source.height;
+      const r = Math.min(1, maxEdge / Math.max(sw, sh));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(img.naturalWidth * r));
-      canvas.height = Math.max(1, Math.round(img.naturalHeight * r));
+      canvas.width = Math.max(1, Math.round(sw * r));
+      canvas.height = Math.max(1, Math.round(sh * r));
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+      if (source.close) source.close();
       return canvas;
     } finally {
-      URL.revokeObjectURL(url);
+      if (url) URL.revokeObjectURL(url);
     }
   }
 

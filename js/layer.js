@@ -1,10 +1,15 @@
-// A Layer is one image plus its view state: orientation (mirror/flip/rotate),
-// value filters (grayscale/contrast) and a pane-relative transform (x, y, scale).
+// A Layer is one image plus its view state: orientation (mirror/flip/90-degree
+// turns), value filters (grayscale/contrast), a pane-relative similarity
+// transform (x, y, scale, angle) and up to two alignment dots.
 //
 // Coordinates: (x, y) is the offset of the image centre from the pane centre, in
-// CSS pixels; `scale` is CSS pixels per image pixel. The layer remembers the pane
-// size it was last laid out in (`frame`) so it can re-fit or re-scale itself when
-// the pane changes size (or when a saved view is restored into a different window).
+// CSS pixels; `scale` is CSS pixels per image pixel; `angle` is a free rotation in
+// radians (set by alignment). A point p in the image (source pixels, relative to
+// the image centre) appears in the pane at
+//     (x, y) + R(angle) * scale * orient(p)
+// where orient() applies the 90-degree turns and flips. The layer remembers the
+// pane size it was last laid out in (`frame`) so it can re-fit or re-scale itself
+// when the pane changes size (or a saved view is restored into another window).
 
 (() => {
   'use strict';
@@ -14,7 +19,10 @@
   const FIT_MARGIN = 12;
   const MIN_SCALE = 0.02;
   const MAX_SCALE = 64;
-  const VIEW_KEYS = ['flipH', 'flipV', 'rotation', 'gray', 'contrast', 'x', 'y', 'scale', 'moved', 'frame'];
+  const VIEW_KEYS = [
+    'flipH', 'flipV', 'rotation', 'gray', 'contrast',
+    'x', 'y', 'scale', 'angle', 'moved', 'frame', 'aligned', 'dots', 'dotsOn',
+  ];
 
   // Canvas 2D `filter` is missing in some browsers (older Safari); fall back to
   // filtering pixels ourselves when it is not available.
@@ -39,8 +47,13 @@
       this.x = 0;
       this.y = 0;
       this.scale = 1;
+      this.angle = 0; // radians; non-zero only after an alignment
       this.moved = false; // user has panned/zoomed away from the auto fit
+      this.aligned = false; // placed relative to the other image (dots / auto / retake)
       this.frame = null; // { w, h } pane size the transform is relative to
+      this.dots = [null, null]; // alignment dots, {x, y} in centred source pixels
+      this.dotsOn = false; // dots visible and placeable
+      this.hidden = false; // skipped when rendering (runtime only, never persisted)
       this._filtered = null;
       this._filteredKey = '';
     }
@@ -49,7 +62,7 @@
       return this.source !== null;
     }
 
-    /** Size of the image's bounding box after rotation, at scale 1. */
+    /** Size of the image's bounding box after 90-degree turns, at scale 1. */
     get bounds() {
       if (!this.source) return { w: 0, h: 0 };
       const { width: w, height: h } = this.source;
@@ -60,29 +73,54 @@
       this.source = canvas;
       this.blob = blob;
       this._filtered = null;
+      this.hidden = false;
       this.flipH = false;
       this.flipV = false;
       this.rotation = 0;
+      this.dots = [null, null];
       this.reset();
+    }
+
+    /**
+     * Swap in a new photo of the same subject, keeping orientation, filters and
+     * placement: the new image is shown at the same on-screen width as the old
+     * one, and the dots keep their relative positions.
+     */
+    replaceImage(canvas, blob = null) {
+      const oldW = this.source ? this.source.width : canvas.width;
+      this.source = canvas;
+      this.blob = blob;
+      this._filtered = null;
+      this.hidden = false;
+      const r = canvas.width / oldW;
+      this.scale /= r;
+      this.dots = this.dots.map((d) => (d ? { x: d.x * r, y: d.y * r } : null));
     }
 
     clear() {
       this.source = null;
       this.blob = null;
       this._filtered = null;
+      this.dots = [null, null];
+      this.dotsOn = false;
+      this.hidden = false;
       this.reset();
     }
 
-    /** Forget manual pan/zoom; the next layout pass re-fits the image. */
+    /** Forget manual placement and alignment; the next layout pass re-fits the image. */
     reset() {
       this.moved = false;
+      this.aligned = false;
+      this.angle = 0;
       this.frame = null;
     }
 
-    /** Plain-object snapshot of the view state (for persistence). */
+    /** Plain-object snapshot of the view state (for persistence and undo). */
     toJSON() {
       const out = {};
       for (const k of VIEW_KEYS) out[k] = this[k];
+      out.dots = this.dots.map((d) => (d ? { x: d.x, y: d.y } : null));
+      out.frame = this.frame ? { w: this.frame.w, h: this.frame.h } : null;
       return out;
     }
 
@@ -90,7 +128,14 @@
       if (!view || typeof view !== 'object') return;
       for (const k of VIEW_KEYS) if (k in view) this[k] = view[k];
       this.rotation = ((Math.round(this.rotation / 90) * 90) % 360 + 360) % 360;
-      if (!Number.isFinite(this.scale) || this.scale <= 0) this.reset();
+      this.angle = Number.isFinite(this.angle) ? this.angle : 0;
+      const dots = Array.isArray(view.dots) ? view.dots : [];
+      this.dots = [0, 1].map((i) => {
+        const d = dots[i];
+        return d && Number.isFinite(d.x) && Number.isFinite(d.y) ? { x: d.x, y: d.y } : null;
+      });
+      this.frame = this.frame && this.frame.w > 0 && this.frame.h > 0 ? { w: this.frame.w, h: this.frame.h } : null;
+      if (!Number.isFinite(this.scale) || this.scale <= 0 || !Number.isFinite(this.x) || !Number.isFinite(this.y)) this.reset();
     }
 
     /**
@@ -106,8 +151,11 @@
         this.scale = Math.min((w - 2 * FIT_MARGIN) / b.w, (h - 2 * FIT_MARGIN) / b.h);
         this.x = 0;
         this.y = 0;
+        this.angle = 0;
       } else {
-        const r = Math.min(w / this.frame.w, h / this.frame.h);
+        // Ratio of the panes' short sides: the same for every layer (alignment is
+        // kept) and reversible, so switching layouts back and forth never drifts.
+        const r = Math.min(w, h) / Math.min(this.frame.w, this.frame.h);
         this.x *= r;
         this.y *= r;
         this.scale *= r;
@@ -136,20 +184,67 @@
       if (!this.moved) this.frame = null; // re-fit for the new bounding box
     }
 
-    draw(ctx, paneW, paneH, { alpha = 1, grayAll = false } = {}) {
+    // ---- point mapping ----
+
+    /** Image point (centred source px) -> displayed orientation (turns, then flips). */
+    orient(p) {
+      let { x, y } = p;
+      for (let i = 0; i < this.rotation / 90; i++) [x, y] = [-y, x];
+      return { x: this.flipH ? -x : x, y: this.flipV ? -y : y };
+    }
+
+    unorient(p) {
+      let x = this.flipH ? -p.x : p.x;
+      let y = this.flipV ? -p.y : p.y;
+      for (let i = 0; i < this.rotation / 90; i++) [x, y] = [y, -x];
+      return { x, y };
+    }
+
+    /** Image point -> pane-centred CSS px. */
+    toPane(p) {
+      const o = this.orient(p);
+      const c = Math.cos(this.angle), s = Math.sin(this.angle);
+      return {
+        x: this.x + this.scale * (o.x * c - o.y * s),
+        y: this.y + this.scale * (o.x * s + o.y * c),
+      };
+    }
+
+    /** Pane-centred CSS px -> image point. */
+    fromPane(q) {
+      const dx = (q.x - this.x) / this.scale;
+      const dy = (q.y - this.y) / this.scale;
+      const c = Math.cos(this.angle), s = Math.sin(this.angle);
+      return this.unorient({ x: dx * c + dy * s, y: -dx * s + dy * c });
+    }
+
+    /**
+     * Draw through this layer's transform. `image` substitutes a derived bitmap
+     * (tinted copy, outline map) stretched over the source rectangle, with no
+     * gray/contrast filter; `composite` sets the blend operation for this draw.
+     */
+    draw(ctx, paneW, paneH, { alpha = 1, grayAll = false, image: custom = null, composite = null } = {}) {
       if (!this.source) return;
-      const gray = this.gray || grayAll;
-      const contrast = this.contrast;
+      const gray = !custom && (this.gray || grayAll);
+      const contrast = !custom && this.contrast;
       const { width: w, height: h } = this.source;
 
       ctx.save();
       ctx.globalAlpha = alpha;
+      if (composite) ctx.globalCompositeOperation = composite;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.translate(paneW / 2 + this.x, paneH / 2 + this.y);
+      ctx.rotate(this.angle);
       ctx.scale(this.scale, this.scale);
       ctx.scale(this.flipH ? -1 : 1, this.flipV ? -1 : 1); // mirror in screen space
       ctx.rotate((this.rotation * Math.PI) / 180);
+
+      if (custom) {
+        ctx.drawImage(custom, -w / 2, -h / 2, w, h);
+        ctx.restore();
+        return;
+      }
 
       let image = this.source;
       if (gray || contrast) {
