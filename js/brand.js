@@ -3,7 +3,7 @@
 // To rename the site, change the two strings below. Do NOT touch DB_NAME in
 // storage.js: it is a storage key, not a label, and renaming it orphans saved photos.
 (function () {
-  var SITE = { name: 'Drawn Onward', slug: 'drawn-onward' };   // <- change here
+  var SITE = { name: 'Sinopia', slug: 'sinopia' };   // <- change here
   window.SITE = SITE;
   document.title = SITE.name;
   function fill() {
