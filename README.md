@@ -98,7 +98,7 @@ The Chrome / Edge row is well-established behaviour, but none of the rows has be
 ```
 index.html       markup, SVG icon sprite, dialogs, per-pane tools template
 css/style.css    warm paper theme, responsive layout, alignment dots
-css/decor.css    "sketchbook desk" decoration: dot-grid page, taped panes, pencil frames, scribble marks (chrome only; never drawn over an image)
+css/decor.css    "squared-up sheet" decoration: red-chalk transfer grid and underdrawing, graphite rulers and plumb line, taped hatch-shadowed panes, scribble marks (chrome only; never drawn over an image)
 js/brand.js      the one place the site name lives (SITE.name, SITE.slug)
 js/app.js        state, UI wiring, persistence, shelf UI, alignment, retake, keyboard shortcuts
 js/align.js      auto-align: FFT correlation search, confidence, Web Worker plumbing
