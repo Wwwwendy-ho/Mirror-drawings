@@ -1,6 +1,6 @@
-# Drawn Onward
+# Sinopia
 
-*(Working name; see "Renaming the site" below.)*
+*(A sinopia is the red-earth underdrawing beneath a fresco, the first drawing that shows through the finished work. To rename the site, see "Renaming the site" below.)*
 
 A small static web app for artists: load a photo of your drawing and the reference you worked from, then compare them side by side, stacked, or overlaid.
 
