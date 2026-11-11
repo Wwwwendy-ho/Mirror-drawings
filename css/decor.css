@@ -1,0 +1,258 @@
+/* Sketchbook desk: the chrome is a dot-grid page with prints taped onto it.
+   Loaded after style.css; overrides by source order. Chrome only: .pane-body,
+   canvas, .dot, .wipe-*, .hidden-chip are never touched, nothing is drawn over a loaded image.
+   Light paper only: the baked-hex data-URIs below would need a second set for a dark theme. */
+
+:root {
+  --graphite-1: #3a3633;
+  --graphite-2: #6b665f;
+  --graphite-3: #a39d92;
+  --tape: #ead9a0;
+  --highlight: #f1dc7a;
+  --blue-pencil: #5f93b8;   /* decoration only: header doodles, never text, never near a pane-body */
+  --wobble-a: 255px 14px 225px 14px / 14px 225px 14px 255px;
+  --wobble-b: 14px 225px 14px 255px / 255px 14px 225px 14px;
+  --dotgrid: radial-gradient(circle at 1px 1px, rgba(42, 37, 33, 0.3) 1.1px, transparent 1.7px);
+
+  --d-underline: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><g fill='none' stroke='%23c2492a' stroke-width='1.6' stroke-linecap='round'><path d='M2 4.6C22 2.3 44 5.3 63 3.6 82 2 101 4.3 118 2.9'/><path d='M9 6.3C36 5 71 6.6 112 5.2' opacity='.45'/></g></svg>");
+  --d-underline-g: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><g fill='none' stroke='%236b665f' stroke-width='1.6' stroke-linecap='round'><path d='M2 4.6C22 2.3 44 5.3 63 3.6 82 2 101 4.3 118 2.9'/><path d='M9 6.3C36 5 71 6.6 112 5.2' opacity='.45'/></g></svg>");
+  --d-rule: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='5'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M0 1.6C40 .8 80 2.4 120 1.5 160 .7 200 2.3 240 1.6' stroke-width='1.2' opacity='.62'/><path d='M0 3.8C50 3.2 110 4.3 170 3.6 200 3.3 220 4 240 3.8' stroke-width='.9' opacity='.3'/></g></svg>");
+  --d-tick: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='3' height='22'><path d='M1.7 1.2C1 7.5 2.2 14.2 1.4 20.8' fill='none' stroke='%232a2521' stroke-opacity='.38' stroke-width='1.2' stroke-linecap='round'/></svg>");
+  /* frame: every stroke sits inside the outer 4px so border-image-slice 4 / width 4 draws it 1:1 */
+  --d-frame: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M1.6 2.4C12 1.4 20 2.8 30 2 40 1.3 48 2.6 58.2 1.8 58.6 12 57.4 20 58 30 58.5 40 57.5 48 58.1 58.2 48 58.6 40 57.4 30 58 20 58.6 12 57.4 1.9 58.2 1.5 48 2.5 40 2 30 1.4 20 2.6 12 2 1.4' stroke-width='1.5' stroke-opacity='.85'/><path d='M3.4 3.4C20 2.8 40 3.6 57 3.1M56.4 4.2C56.9 22 56 40 56.5 56' stroke-width='.9' stroke-opacity='.28'/></g></svg>");
+  --d-tape: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 18'><path d='M2.5 1 4 3.5 2 5.5 4 8 2 10.5 4 13 2.5 17H57.5L56 14.5 58 12 56 9.5 58 7 56 4.5 57.5 1z' fill='%23ead9a0' fill-opacity='.94'/><path d='M4 1.5H56M4 16.5H56' stroke='%232a2521' stroke-opacity='.18'/><path d='M8 6.5H50M11 11.5H53' stroke='%23fff' stroke-opacity='.32'/></svg>");
+  --d-swipe: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 30' preserveAspectRatio='none'><path d='M3 5.5C30 3.5 70 4.5 97.5 3L96 9l2.5 4-2 5 1.5 7.5C68 27.5 32 26 2.5 27.5L4 20 1.5 14z' fill='%23f1dc7a'/></svg>");
+  --d-hatch: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><path d='M-1 9 9-1M-1 5 5-1M3 9 9 3' stroke='%23ece6da' stroke-opacity='.09' stroke-width='1'/></svg>");
+  --d-spin: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M16.8 7.2C15.3 3.9 11.8 2.3 8.3 3.2 4.6 4.2 2.4 7.9 3.2 11.6c.8 3.7 4.3 6.1 8 5.5 2.6-.4 4.6-2.1 5.5-4.3' fill='none' stroke='%232a2521' stroke-width='1.8' stroke-linecap='round'/><path d='M17.3 3.6 16.9 7.4 13.2 6.7' fill='none' stroke='%232a2521' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --d-circles: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 28' fill='none' stroke='%232a2521' stroke-width='2' stroke-linecap='round'><path d='M27.8 14.2c.2 6.200-4.600 10.900-10.700 10.800C11 24.900 6.300 20.300 6.400 14 6.500 7.900 11.300 3.200 17.300 3.300c5.900.1 10.400 4.800 10.500 10.900'/><path d='M41.600 13.700c.3 6.100-4.500 11.100-10.600 11.200-6.200.1-10.900-4.700-10.900-10.800 0-6 4.700-10.900 10.700-11 5.900-.1 10.600 4.600 10.800 10.600' opacity='.6'/><path d='M24 11.200v5.600M21.200 14h5.600'/></svg>");
+  --d-marker: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M9.8 5.8C9.9 8 8.2 9.900 6 9.900 3.800 9.900 2.100 8.100 2.200 6 2.300 3.800 4 2.100 6.200 2.200c2 .1 3.400 1.600 3.700 3.300' fill='none' stroke='%23625a51' stroke-width='1.3' stroke-linecap='round'/></svg>");
+  --d-marker-on: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M10 5.900C10.100 8.200 8.300 10 6 10 3.700 10 2 8.200 2.100 5.900 2.200 3.700 3.900 2 6.200 2.100 8.300 2.200 9.900 3.800 10 5.900z' fill='%23c2492a'/><path d='M3.300 3.400C5 1.600 8 1.500 9.800 3.500' fill='none' stroke='%23c2492a' stroke-width='1' stroke-linecap='round'/></svg>");
+  --d-spark: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3.2 9.8 1.4 11.9M6.3 6.2 5.2 2.2M10.4 6.9l3.2-3.3' fill='none' stroke='%23ece6da' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  --d-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2.6 8.7c1.3 1.2 2.3 2.5 3.1 3.9C7.8 8.6 10.5 5.3 14 2.6' fill='none' stroke='%23ece6da' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+/* ---------- Page: the dotted guide page ---------- */
+
+body { background: var(--grain), var(--dotgrid) 9px 9px / 18px 18px, var(--paper); }
+
+.doodle {
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  flex: none; pointer-events: none;
+}
+.doodle .ax { stroke: var(--blue-pencil); }
+
+/* ---------- Header: lettered title, pencil rule, margin doodles ---------- */
+
+.top {
+  padding-bottom: 9px;
+  border-bottom: 0;
+  background: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--paper-2);
+}
+.brand { display: inline-flex; align-items: baseline; flex: 0 1 auto; min-width: 0; }
+.brand-mark { align-self: center; width: 26px; height: 20px; margin-right: 8px; color: var(--graphite-1); }
+.brand-name { position: relative; min-width: 0; padding-bottom: 5px; margin-bottom: -5px; overflow: hidden; text-overflow: ellipsis; }
+.brand-name::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 7px;
+  background: var(--d-underline) left bottom / 100% 100% no-repeat;
+  animation: draw-in 420ms 150ms ease-out both;
+}
+.tagline { flex: 0 10 auto; }
+.margin-doodle { display: none; width: 160px; height: 34px; margin: -7px 6px -7px auto; color: var(--graphite-2); }
+@media (min-width: 1100px) { .margin-doodle { display: block; } }
+
+@media (min-width: 721px) {
+  .toolbar > * + *, .tool-group + .tool-group { border-left: 0; background: var(--d-tick) left center / 3px 22px no-repeat; }
+}
+
+/* ---------- Panes: prints taped onto the page ---------- */
+
+.workspace { padding: 9px 13px; }
+.panes { gap: 8px; }
+.pane {
+  border: 4px solid var(--rule-strong);
+  border-image: var(--d-frame) 4 / 4px round;
+  border-radius: 0;
+}
+.pane::before, .pane::after {
+  content: ""; position: absolute; z-index: 4; pointer-events: none;
+  width: 64px; height: 19px; top: -12px;
+  background: var(--d-tape) center / 100% 100% no-repeat;
+}
+.pane::before { left: 14px; transform: rotate(-4deg); }
+.pane::after { right: 18px; transform: rotate(3deg); }
+body[data-layout="overlay"] .pane[data-slot="reference"]::before,
+body[data-layout="overlay"] .pane[data-slot="reference"]::after { display: none; }
+
+.pane-head { border-bottom: 0; background: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--paper-2); }
+.pane-title::before {
+  border: 0; border-radius: 0; width: 10px; height: 10px;
+  background: var(--d-marker) center / contain no-repeat;
+}
+.pane.active .pane-title::before { background: var(--d-marker-on) center / contain no-repeat; }
+.shelf { border-bottom: 0; background: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--paper-2); padding-bottom: 8px; }
+body[data-layout="overlay"] .pane[data-slot="reference"] .shelf {
+  border-top: 0; padding: 8px 8px 6px;
+  background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--paper-2);
+}
+
+/* ---------- Controls: pencil boxes, graphite fills, highlighter swipes ---------- */
+
+.btn, .tool { border-radius: var(--wobble-a); }
+.btn:nth-child(even), .tool:nth-child(even) { border-radius: var(--wobble-b); }
+:is(.btn, .tool, .segmented input:focus-visible + label):focus-visible { outline-offset: 2px; }
+.btn:active:not(:disabled):not(.primary):not([aria-pressed="true"]), .tool:active:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--paper-3); transform: translateY(1px);
+}
+.btn.primary { background: var(--d-hatch), var(--ink); }
+.btn.primary:hover { background: var(--d-hatch), #17130f; }
+.btn.toggle[aria-pressed="true"], .tool.toggle[aria-pressed="true"], .btn.toggle[aria-pressed="true"]:hover {
+  background: var(--d-hatch), var(--graphite-1); color: var(--paper); border-color: var(--graphite-1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled):not(.primary):not([aria-pressed="true"]), .tool:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: transparent; border-color: var(--graphite-2);
+  }
+  .tool.danger:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:hover:not(:disabled) .ic, .tool:hover:not(:disabled) .ic { animation: wiggle 260ms ease-in-out 1; transform-origin: 50% 80%; }
+  .dropzone .btn:hover { background: rgba(243, 238, 229, 0.14); border-color: rgba(243, 238, 229, 0.55); }
+  .dropzone .btn.quiet:hover { border-color: transparent; }
+}
+
+.segmented { border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; border-radius: 0; overflow: visible; }
+.segmented legend { line-height: 26px; border-right: 0; background: var(--d-tick) right center / 3px 18px no-repeat; }
+.segmented label { height: 26px; position: relative; border-left: 0; background: var(--d-tick) left center / 3px 18px no-repeat; }
+.segmented label:first-of-type { background: none; }
+.segmented.small label { height: 22px; }
+.segmented.small legend { line-height: 22px; }
+.segmented input:checked + label,
+.segmented input:checked + label:first-of-type {
+  color: var(--ink);
+  background: var(--d-swipe) center / calc(100% - 6px) calc(100% - 8px) no-repeat;
+}
+.segmented input:checked + label::after {
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 6px;
+  background: var(--d-underline) center / 100% 6px no-repeat;
+  animation: draw-in 220ms ease-out both;
+}
+
+.overlay-bar { border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; border-radius: 0; padding: 4px 10px; }
+
+/* ---------- Pane status: aligning ---------- */
+
+.pane-status:not([hidden])::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px;
+  background: var(--d-spin) center / contain no-repeat;
+  animation: scribble-spin 1s steps(8) infinite;
+}
+
+/* ---------- Dialogs: loose notes with tape ---------- */
+
+.dialog {
+  padding-top: 28px;
+  border: 4px solid var(--rule-strong);
+  border-image: var(--d-frame) 4 / 4px round;
+  border-radius: 0;
+  box-shadow: 0 2px 0 rgba(42, 37, 33, 0.18);
+}
+.dialog::backdrop {
+  background: radial-gradient(circle at 1px 1px, rgba(236, 230, 218, 0.1) 1px, transparent 1.5px) 0 0 / 18px 18px, rgba(42, 37, 33, 0.55);
+}
+.dialog h2 { padding-bottom: 8px; background: var(--d-underline-g) left bottom / min(60%, 220px) 7px no-repeat; }
+.dialog h2:first-child::before {
+  content: ""; position: absolute; top: 3px; left: 50%; margin-left: -29px; width: 58px; height: 17px;
+  background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(-2deg);
+  animation: rise var(--ease); pointer-events: none;
+}
+ul.plain { list-style: none; padding-left: 0; }
+ul.plain li { padding-left: 18px; background: var(--d-marker) 0 .35em / 10px 10px no-repeat; }
+kbd { border-radius: var(--wobble-a); }
+.inline-mark { width: 24px; height: 14px; margin: 0 3px; vertical-align: -2px; color: var(--graphite-2); }
+.inline-mirror { width: 14px; height: 17px; margin: 0 3px; vertical-align: -4px; color: var(--graphite-2); }
+.help-pencil { width: 40px; height: 12px; margin-left: auto; transform: rotate(-8deg); color: var(--graphite-2); }
+#help-dialog .dialog-actions > :last-child { margin-left: 0; }
+
+/* ---------- Toast: a graphite note stamped on ---------- */
+
+.toast {
+  padding-left: 34px;
+  border-radius: var(--wobble-b);
+  background: var(--d-hatch), var(--graphite-1);
+  transform: translate(-50%, 12px) rotate(-0.6deg);
+}
+.toast.show { transform: translate(-50%, 0) rotate(-0.6deg); animation: stamp-in 200ms cubic-bezier(.2, .9, .3, 1.2) both; }
+.toast::before {
+  content: ""; position: absolute; left: 12px; top: 50%; width: 14px; height: 14px; margin-top: -7px;
+  background: var(--d-spark) center / contain no-repeat;
+}
+.toast.ok::before { background-image: var(--d-check); }
+.toast::after {
+  content: ""; position: absolute; left: -10px; top: -9px; width: 40px; height: 12px;
+  background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(-6deg);
+}
+
+/* ---------- Empty state: the pair, drawn once ---------- */
+
+.empty-art { width: 96px; height: 96px; margin-bottom: 8px; color: rgba(243, 238, 229, 0.78); }
+@media (min-width: 1100px) and (min-height: 700px) { .empty-art { width: 136px; height: 136px; } }
+@media (max-height: 520px) { .empty-art { display: none; } }
+@media (max-width: 720px) and (max-height: 620px) { body[data-layout="stacked"] .empty-art { display: none; } } /* two short mats: keep the buttons in view */
+
+/* ---------- Motion ---------- */
+
+@keyframes draw-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-7deg); } 65% { transform: rotate(5deg); } }
+@keyframes stamp-in {
+  0% { opacity: 0; transform: translate(-50%, 0) rotate(-3deg) scale(1.08); }
+  60% { opacity: 1; transform: translate(-50%, 0) rotate(-0.2deg) scale(0.985); }
+  100% { opacity: 1; transform: translate(-50%, 0) rotate(-0.6deg) scale(1); }
+}
+@keyframes scribble-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pane-status:not([hidden])::before { width: 24px; background-image: var(--d-circles); }
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 720px) {
+  .masthead { padding: 6px 14px 9px; padding-top: calc(6px + env(safe-area-inset-top)); border-bottom: 0;
+    background: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--paper-2); }
+  .brand-mark { width: 22px; height: 17px; margin-right: 6px; }
+  .workspace { padding: 5px; gap: 6px; }
+  .panes { gap: 4px; }
+  .toolbar { padding-top: 7px; border-top: 0;
+    background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--paper-2); }
+  .toolbar .segmented label { height: 38px; }
+  .tools-toggle[aria-expanded="true"] { background: var(--d-hatch), var(--graphite-1); color: var(--paper); }
+  .pane::before { width: 38px; height: 12px; top: -8px; left: 10px; }
+  .pane::after { display: none; }
+  .pane-head { padding-bottom: 5px; }
+  #compare-mode label, #move-target label { height: 32px; }
+  .overflow {
+    border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; box-shadow: none;
+  }
+  .overflow::before {
+    content: ""; position: absolute; right: 16px; top: -10px; width: 38px; height: 12px;
+    background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(4deg);
+  }
+  .pane-tools { border-top: 0; padding-top: 12px;
+    background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--paper-2); }
+  .empty-art { width: 48px; height: 48px; margin-bottom: 2px; }
+  body[data-layout="side"] .empty-art { display: none; }
+  .toast::after { display: none; }
+}
+@media (max-width: 360px) { /* 320px phones: the bottom bar used to overflow and clip the Overlay option */
+  .toolbar { gap: 4px; padding-left: 6px; padding-right: 6px; }
+  .toolbar .btn { min-width: 38px; padding: 0 6px; }
+  .toolbar .segmented label { padding: 0 10px; }
+}
+@media (max-width: 560px) {
+  .dialog { padding-top: 22px; }
+  .dialog h2:first-child::before { top: 3px; width: 42px; height: 13px; margin-left: -21px; }
+  .help-pencil, .inline-mirror { display: none; }
+}
+
+@media (forced-colors: active) {
+  .pane, .dialog, .segmented, .overlay-bar { border-image: none; border-color: CanvasText; }
+  .pane::before, .pane::after { display: none; }
+}
