@@ -589,7 +589,7 @@
     undoAlign = null;
     try {
       await shelf.clearAll();
-      toast('All saved photos cleared.');
+      toast('All saved photos cleared.', null, 'ok');
     } catch (err) {
       storageFailed(err);
     }
@@ -922,7 +922,7 @@
     // Room was made: store photos that were kept in memory only.
     let saved = 0;
     for (const s of SLOTS) if (shelf.unsavedIds(s).length) saved += await shelf.saveUnsaved(s);
-    if (saved) toast(saved === 1 ? 'The new photo is now saved.' : `${saved} photos are now saved.`);
+    if (saved) toast(saved === 1 ? 'The new photo is now saved.' : `${saved} photos are now saved.`, null, 'ok');
     if (shelfUI.remove && !SLOTS.some((s) => shelf.unsavedIds(s).length)) closeStrip();
     syncUI();
     requestRender();
@@ -1370,7 +1370,7 @@
     });
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     try {
-      await downloadCanvas(out, `drawing-compare-${stamp}.png`);
+      await downloadCanvas(out, `${(window.SITE && SITE.slug) || 'compare'}-${stamp}.png`);
     } catch (err) {
       console.error(err);
       toast('Export failed.');
@@ -1612,7 +1612,7 @@
 
   let toastTimer = 0;
   /** @param {{label: string, run: () => void}} [action] optional button shown in the toast */
-  function toast(message, action) {
+  function toast(message, action, kind) { // kind 'ok' swaps the lead mark for a checkmark
     ui.toast.textContent = '';
     const text = document.createElement('span');
     text.textContent = message;
@@ -1626,6 +1626,7 @@
       ui.toast.appendChild(btn);
     }
     ui.toast.classList.toggle('has-action', !!action);
+    ui.toast.classList.toggle('ok', kind === 'ok');
     ui.toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => ui.toast.classList.remove('show'), action ? 8000 : Math.max(4000, message.length * 60));
