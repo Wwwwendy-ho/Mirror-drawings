@@ -94,6 +94,8 @@ The Chrome / Edge row is well-established behaviour, but none of the rows has be
 2. In the repository go to **Settings → Pages**, choose **Deploy from a branch**, pick your branch and the `/ (root)` folder, and save.
 3. After a minute the site is live at `https://<user>.github.io/<repo>/`. GitHub Pages serves over HTTPS, which the camera and clipboard APIs require.
 
+If the site does not update after a push, open the repository's **Actions** tab and look at the latest "pages build and deployment" run. A run that failed at startup is usually a temporary GitHub outage (check githubstatus.com); use **Re-run all jobs**, or push any small commit to start a fresh build. After it succeeds, hard-reload the page (Ctrl+Shift+R) because Pages caches files for several minutes.
+
 ## Files
 
 ```
