@@ -73,7 +73,6 @@ body { background: var(--grain), var(--u-sheet) 0 0 / 192px 192px, var(--paper);
 .pane::before, .pane::after { content: ""; position: absolute; z-index: 4; pointer-events: none; width: 64px; height: 19px; top: -12px; background: var(--d-tape) center / 100% 100% no-repeat; }
 .pane::before { left: 14px; transform: rotate(-4deg); }
 .pane::after { right: 18px; transform: rotate(3deg); }
-body[data-layout="overlay"] .pane[data-slot="reference"]::before, body[data-layout="overlay"] .pane[data-slot="reference"]::after { display: none; }
 @media (min-width: 721px) {
   .panes { position: relative; }
   body[data-layout="side"] .panes { column-gap: 14px; }
@@ -84,10 +83,9 @@ body[data-layout="overlay"] .pane[data-slot="reference"]::before, body[data-layo
   }
 }
 .pane-head { border-bottom: 0; background: var(--band-b); }
-.pane-title::before { border: 0; border-radius: 0; width: 10px; height: 10px; background: var(--d-marker) center / contain no-repeat; }
-.pane.active .pane-title::before { background: radial-gradient(circle, var(--accent) 2.6px, transparent 3.2px), var(--d-marker) center / contain no-repeat; }
+.layer-tab::before { border: 0; border-radius: 0; width: 10px; height: 10px; background: var(--d-marker) center / contain no-repeat; }
+.layer-ctl.is-current .layer-tab::before { background: radial-gradient(circle, var(--accent) 2.6px, transparent 3.2px), var(--d-marker) center / contain no-repeat; }
 .shelf { border-bottom: 0; background: var(--band-b); padding-bottom: 8px; }
-body[data-layout="overlay"] .pane[data-slot="reference"] .shelf { border-top: 0; padding: 8px 8px 6px; background: var(--band-t); }
 
 /* ---------- Controls: pencil boxes, graphite fills, highlighter swipes ---------- */
 
@@ -115,6 +113,23 @@ body[data-layout="overlay"] .pane[data-slot="reference"] .shelf { border-top: 0;
 .segmented input:checked + label, .segmented input:checked + label:first-of-type { color: var(--ink); background: var(--d-swipe) center / calc(100% - 6px) calc(100% - 8px) no-repeat; }
 .segmented input:checked + label::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 6px; background: var(--d-underline) center / 100% 6px no-repeat; animation: draw-in 220ms ease-out both; }
 .overlay-bar { border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; border-radius: 0; padding: 4px 10px; }
+/* Overlay: layer tabs wear the segmented control's pencil frame; the selected one gets the highlighter swipe and the underline. */
+body[data-layout="overlay"] .layer-tab { border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; border-radius: 0; position: relative; height: 28px; background: var(--paper); }
+body[data-layout="overlay"] .layer-tab:hover { background: var(--paper-3); }
+body[data-layout="overlay"] .layer-ctl.is-current .layer-tab { color: var(--ink); border-color: var(--rule-strong); background: var(--d-swipe) center / calc(100% - 6px) calc(100% - 8px) no-repeat, var(--paper); }
+body[data-layout="overlay"] .layer-ctl.is-current .layer-tab::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 6px; background: var(--d-underline) center / 100% 6px no-repeat; animation: draw-in 220ms ease-out both; }
+body[data-layout="overlay"] .layer-ctl:not(.has-image) .layer-tab { border-image: none; border: 1px dashed var(--rule-strong); }
+body[data-layout="overlay"] .layer-ctl.is-current:not(.has-image) .layer-tab { background: var(--d-swipe) center / calc(100% - 4px) calc(100% - 6px) no-repeat, var(--paper); }
+body[data-layout="overlay"] .pane-body > .pane-status:not([hidden])::before { filter: brightness(2.6) saturate(.7); }
+/* ...and the strip under the sheet keeps the desk strip's running loops in its free space. */
+body[data-layout="overlay"] .overlay-bar::after { content: ""; flex: 1; align-self: stretch; min-width: 0; background: var(--u-loops) left center / 40px 24px repeat-x; }
+@media (max-width: 720px), (min-width: 721px) and (max-height: 599px) {
+  body[data-layout="overlay"] .layer-tab { height: 44px; }
+  body[data-layout="overlay"] .overlay-bar::after { display: none; }
+  body[data-layout="overlay"] .pane-tools { border-top: 0; padding-top: 12px; background: var(--band-t); }
+  body[data-layout="overlay"] .tools-toggle[aria-expanded="true"] { background: var(--d-hatch), var(--graphite-1); color: var(--paper); }
+}
+@media (max-width: 720px) { body[data-layout="overlay"] .pane-head { padding-bottom: 2px; } }
 .pane-status:not([hidden])::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; background: var(--d-spin) center / contain no-repeat; animation: scribble-spin 1s steps(8) infinite; }
 
 /* ---------- Dialogs: loose notes with tape, a construction sphere under the text ---------- */
@@ -230,7 +245,7 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
   .pane::before { width: 38px; height: 12px; top: -8px; left: 10px; }
   .pane::after { display: none; }
   .pane-head { padding-bottom: 5px; }
-  #compare-mode label, #move-target label { height: 32px; }
+  #compare-mode label { height: 32px; }
   .overflow { border: 3px solid var(--rule-strong); border-image: var(--d-frame) 4 / 3px round; box-shadow: none; }
   .overflow::before { content: ""; position: absolute; right: 16px; top: -10px; width: 38px; height: 12px; background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(4deg); }
   .pane-tools { border-top: 0; padding-top: 12px; background: var(--band-t); }
@@ -254,6 +269,10 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
   .help-pencil, .inline-mirror, .inline-scale, .dialog-kit { display: none; }
 }
 @media (forced-colors: active) {
-  .pane, .dialog, .segmented, .overlay-bar { border-image: none; border-color: CanvasText; }
+  .pane, .dialog, .segmented, .overlay-bar, body[data-layout="overlay"] .layer-tab { border-image: none; border-color: CanvasText; }
   .pane::before, .pane::after, .panes::after { display: none; }
 }
+/* Line up coach: a piece of tape at the corner, like the toast. */
+.dot-coach { border-radius: var(--wobble-b); background: var(--d-hatch), var(--graphite-1); }
+.dot-coach::before { content: ""; position: absolute; left: -9px; top: -8px; width: 38px; height: 12px; background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(-6deg); pointer-events: none; }
+@media (max-width: 720px) { .dot-coach::before { width: 30px; height: 10px; } }

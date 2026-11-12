@@ -24,7 +24,7 @@
 @media (forced-colors: active) { .tip { border: 1px solid CanvasText; } .tip::before { display: none; } }
 
 /* Long-press on touch must not select text, call up the image menu or zoom. */
-:is(.btn, .tool, .segmented label, .shelf-count, .shelf-item) { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+:is(.btn, .tool, .layer-tab, .segmented label, .shelf-count, .shelf-item) { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 .shelf-item img { -webkit-user-drag: none; }
 /* Disabled buttons get no events of their own; the container does (tips.js finds them by position). */
 :is(.btn, .tool):disabled { pointer-events: none; }
