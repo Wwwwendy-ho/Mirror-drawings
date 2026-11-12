@@ -13,7 +13,7 @@
   const LABELS = { drawing: 'Drawing', reference: 'Reference' };
   const SETTINGS_KEYS = [
     'layout', 'linked', 'grid', 'grayAll', 'overlayTop', 'opacity', 'active',
-    'compareMode', 'wipe', 'outlineDetail', 'tipFlick',
+    'compareMode', 'wipe', 'outlineDetail', 'tipFlick', 'tipUnlink', 'tipDots',
     'cameraDevices', 'cameraFacing', 'persistAsked',
   ]; // plus settings.activePhoto, written from the shelves
   const SAVE_DELAY = 500; // ms of quiet before view/settings are written
@@ -34,9 +34,11 @@
     wipe: 0.5, // curtain position, fraction of the pane width
     outlineDetail: 0.5,
     tipFlick: false, // the one-time double-tap tip has been shown
+    tipUnlink: false, // the one-time "Link is off" tip (Overlay) has been shown
     active: 'drawing', // the selected image: target for keyboard shortcuts and overlay-mode gestures
     showPrev: false, // show the previous photo of the drawing instead of the current one
-    dotTarget: 'drawing', // which image taps place dots on when both are in one pane
+    tipDots: false, // the first-use "match the same two spots" picture has been shown
+    dotFlow: null, // the Line up flow while it is open: { step, oneDot, snapshot, crops, ... } (runtime only, never saved)
     cameraDevices: {}, // remembered camera deviceId per facing ('environment' | 'user')
     cameraFacing: 'environment', // last camera used
     persistAsked: false, // navigator.storage.persist() has been requested once
@@ -54,9 +56,12 @@
   let cameraStatus = 'unknown'; // 'available' | 'none' | 'unknown'
   let pendingPasteSlot = null;
   let alignJob = 0; // id of the latest matching job; older results are dropped
+  let alignKind = null; // 'fit' while a Fit all match is pending: any manual move, layout or photo switch drops it
+  const matchCache = new Map(); // matchKey() -> Aligner result, so a repeated Fit all on the same photos is instant
   let animToken = 0;
   let undoAlign = null;
-  let dotHintShown = false;
+  let dotLock = 0; // performance.now() until which taps and double-clicks next to a just-placed dot are ignored
+  let touchTipDone = false;
   let prevId = null; // shelf id of the photo prevLayer shows (the entry before the drawing's active one)
   let ghostToken = 0;
   let restoreDone;
@@ -70,6 +75,27 @@
   const paneEls = Object.fromEntries(SLOTS.map((s) => [s, $(`.pane[data-slot="${s}"]`)]));
   const panes = Object.fromEntries(
     SLOTS.map((s) => [s, new Pane($('.pane-body', paneEls[s]), $('canvas', paneEls[s]), requestRender)]),
+  );
+  // Per-image controls, found once. In Overlay the Reference's ctl / tools / strip are docked into the
+  // Drawing pane (dockReference), so they are always reached through these refs and `data-owner`, never through a pane.
+  const els = Object.fromEntries(
+    SLOTS.map((s) => {
+      const pane = paneEls[s];
+      const ctl = $(`.layer-ctl[data-owner="${s}"]`, pane);
+      return [s, {
+        pane, ctl,
+        tab: $('.layer-tab', ctl),
+        eye: $('.eye', ctl),
+        step: $('.shelf-step', ctl),
+        count: $('.shelf-count', ctl),
+        prev: $('[data-shelf="prev"]', ctl),
+        next: $('[data-shelf="next"]', ctl),
+        headAdd: $('.head-add', ctl),
+        toggle: $('.tools-toggle', pane),
+        tools: $(`.pane-tools[data-owner="${s}"]`, pane),
+        strip: $(`.shelf[data-owner="${s}"]`, pane),
+      }];
+    }),
   );
   const toolsEls = {};
   const fileInputs = {};
@@ -96,10 +122,8 @@
     rangeLabel: $('#range-label'),
     wipeHandle: $('.wipe-handle'),
     wipeTags: { left: $('.wipe-tag.left'), right: $('.wipe-tag.right') },
-    moveTarget: $('#move-target'),
-    moveHint: $('#move-hint'),
     toast: $('#toast'),
-    status: $('.pane[data-slot="drawing"] .pane-status'),
+    status: $('.pane-status'), // lives in the Drawing head; docked into the canvas in Overlay
   };
 
   // ---------------------------------------------------------------- rendering
@@ -130,7 +154,37 @@
     return slot === 'drawing' && showingPrev() ? prevLayer : layer;
   }
 
+  /**
+   * When the pane changes size (layout switch, window resize, a session restored into another window) an aligned
+   * pair must keep its relationship: the reference is re-placed by its own rules (re-fitted, or scaled when the
+   * user moved it), and the drawing and its ghost follow with the SAME similarity (scale k, rotation, offset
+   * about the reference), so drawing.scale / reference.scale, the relative offset and the angle never change.
+   */
+  function placePair() {
+    const d = layers.drawing, r = layers.reference;
+    if (!(d.hasImage && r.hasImage && d.aligned && r.frame && d.frame)) return;
+    const pd = panes.drawing;
+    const pr = state.layout === 'overlay' ? panes.drawing : panes.reference;
+    const w = pr.width, h = pr.height;
+    if (w <= 0 || h <= 0 || pd.width !== w || pd.height !== h) return; // panes disagree (mid-resize): per-layer rules apply
+    if (r.frame.w === w && r.frame.h === h && d.frame.w === w && d.frame.h === h) return;
+    const from = placement(r);
+    r.placeIn(w, h);
+    const to = placement(r);
+    const k = to.scale / from.scale, dA = to.angle - from.angle;
+    const c = Math.cos(dA), s = Math.sin(dA);
+    for (const l of prevLayer.hasImage ? [d, prevLayer] : [d]) {
+      const dx = l.x - from.x, dy = l.y - from.y;
+      l.x = to.x + k * (dx * c - dy * s);
+      l.y = to.y + k * (dx * s + dy * c);
+      l.scale *= k;
+      l.angle += dA;
+      l.frame = { w, h };
+    }
+  }
+
   function render() {
+    placePair();
     const opts = { grid: state.grid, grayAll: state.grayAll, background: PANE_BG };
     for (const slot of SLOTS) {
       const pane = panes[slot];
@@ -142,7 +196,12 @@
         if (layer === layers.drawing) prevLayer.placeIn(pane.width, pane.height);
       }
       let plan;
-      if (state.layout === 'overlay') {
+      const solo = soloSlot();
+      if (solo) {
+        // Line up, Overlay: each step shows only the image it is about, at full strength
+        const only = visibleLayer(solo) || layers[solo];
+        plan = { items: only.hasImage ? [{ layer: only }] : [], isolate: false, divider: null };
+      } else if (state.layout === 'overlay') {
         const top = state.overlayTop;
         plan = Compare.plan({
           mode: state.compareMode,
@@ -161,90 +220,677 @@
       pane.render(plan.items, { ...opts, isolate: plan.isolate, divider: plan.divider });
       positionDots(slot, stack);
     }
+    if (state.dotFlow) positionCoach();
   }
 
-  // ---------------------------------------------------------------- alignment dots
+  // ---------------------------------------------------------------- Line up with dots (guided flow)
 
-  // Each pane body holds four dot handles (two per image); only the ones whose
-  // image is drawn in that pane, has dots switched on, and has that dot are shown.
+  // Dots exist only while the flow is open. Pairs are matched by colour AND shape (pair 1 = vermilion circle,
+  // pair 2 = blue square); the reference's dots are dashed with an "R" tab, the drawing's solid.
+  // Steps: intro (first use) -> R1 -> R2 -> D1 -> D2 -> automatic align -> review. See the design spec, section 3.
+
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const PAIR = [
+    { name: 'vermilion circle', hex: '#c2492a' },
+    { name: 'blue square', hex: '#1f6f8b' },
+  ];
+  const ORDER = ['R1', 'R2', 'D1', 'D2'];
+  const stepSlot = (s) => (s === 'R1' || s === 'R2' ? 'reference' : s === 'D1' || s === 'D2' ? 'drawing' : null);
+  const stepIdx = (s) => (s === 'R2' || s === 'D2' ? 1 : 0);
+  const inSteps = () => !!(state.dotFlow && stepSlot(state.dotFlow.step));
+  const soloSlot = () => (state.layout === 'overlay' && inSteps() ? stepSlot(state.dotFlow.step) : null);
+  const TAP = () => (IS_TOUCH ? 'Tap' : 'Click');
+  const coachEl = $('#dot-coach');
+  const coachQ = (sel) => $(sel, coachEl);
+  const links = {}; // links[paneSlot] = { intra: {drawing, reference}, cross: [line, line] }
+  const loupe = document.createElement('canvas');
+  loupe.className = 'dot-loupe';
+  loupe.width = loupe.height = 224;
+  loupe.hidden = true;
+  loupe.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(loupe);
+
+  // Each pane body holds four dot handles (two per image); which are shown depends on the flow (positionDots).
   for (const paneSlot of SLOTS) {
     const body = $('.pane-body', paneEls[paneSlot]);
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'dot-links');
+    svg.setAttribute('aria-hidden', 'true');
+    const line = (cls) => {
+      const l = document.createElementNS(SVGNS, 'line');
+      l.setAttribute('class', cls);
+      l.style.display = 'none';
+      svg.appendChild(l);
+      return l;
+    };
+    links[paneSlot] = { intra: { reference: line('link-in'), drawing: line('link-in') }, cross: [line('link-x'), line('link-x')] };
+    body.appendChild(svg);
     dotEls[paneSlot] = {};
-    for (const layerSlot of SLOTS) {
+    for (const layerSlot of ['reference', 'drawing']) {
       dotEls[paneSlot][layerSlot] = [0, 1].map((i) => {
         const el = document.createElement('button');
         el.type = 'button';
         el.className = `dot dot-${layerSlot}`;
         el.hidden = true;
-        el.dataset.n = String(i + 1); // shown by CSS as a numbered tab
-        el.setAttribute('aria-label', `${LABELS[layerSlot]} dot ${i + 1}. Drag to move, double-click to remove.`);
+        el.dataset.n = String(i + 1);
+        const ring = document.createElement('i');
+        ring.className = 'ring';
+        ring.dataset.tag = `${layerSlot === 'reference' ? 'R' : ''}${i + 1}`;
+        el.appendChild(ring);
+        el.setAttribute('aria-label', `${LABELS[layerSlot]} dot ${i + 1} of 2, ${PAIR[i].name}. Arrow keys move it, Delete removes it.`);
         body.appendChild(el);
 
         const layer = layers[layerSlot];
+        let moved = false;
         const moveTo = (e) => {
           const r = body.getBoundingClientRect();
           layer.dots[i] = layer.fromPane({ x: e.clientX - r.left - r.width / 2, y: e.clientY - r.top - r.height / 2 });
+          moved = true;
+          if (e.pointerType !== 'mouse') drawLoupe(paneSlot, layerSlot, i, e);
           requestRender();
         };
         el.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          el.setPointerCapture(e.pointerId);
+          moved = false;
+          try { el.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
           el.classList.add('dragging');
+          el.focus({ preventScroll: true });
         });
         el.addEventListener('pointermove', (e) => {
-          if (el.hasPointerCapture(e.pointerId)) moveTo(e);
+          if (el.classList.contains('dragging')) moveTo(e);
         });
         const release = () => {
+          if (!el.classList.contains('dragging')) return;
           el.classList.remove('dragging');
-          syncUI();
+          loupe.hidden = true;
+          if (moved) flowAdvance();
+          else syncUI();
         };
         el.addEventListener('pointerup', release);
         el.addEventListener('pointercancel', release);
         el.addEventListener('dblclick', (e) => {
           e.preventDefault();
-          layer.dots[i] = null;
-          syncUI();
-          requestRender();
+          if (performance.now() < dotLock) return; // the second click of a double-click that placed this dot
+          removeDot(layerSlot, i);
+        });
+        el.addEventListener('keydown', (e) => {
+          const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+          if (move) {
+            e.preventDefault();
+            e.stopPropagation(); // not also a nudge of the image
+            const k = e.shiftKey ? 10 : 1;
+            const q = layer.toPane(layer.dots[i]);
+            layer.dots[i] = layer.fromPane({ x: q.x + move[0] * k, y: q.y + move[1] * k });
+            requestRender();
+            clearTimeout(el._t);
+            el._t = setTimeout(flowAdvance, 300); // in review: re-align once the arrows rest
+          } else if (e.key === 'Delete') {
+            e.preventDefault();
+            e.stopPropagation();
+            removeDot(layerSlot, i);
+          }
         });
         return el;
       });
     }
   }
 
+  function setLine(l, a, b) {
+    if (!a || !b) { l.style.display = 'none'; return; }
+    l.setAttribute('x1', a.x); l.setAttribute('y1', a.y); l.setAttribute('x2', b.x); l.setAttribute('y2', b.y);
+    l.style.display = '';
+  }
+
   function positionDots(paneSlot, stack) {
     const pane = panes[paneSlot];
+    const f = state.dotFlow;
+    const solo = soloSlot();
+    const pt = { drawing: [null, null], reference: [null, null] };
     for (const layerSlot of SLOTS) {
       const layer = layers[layerSlot];
-      const visible = stack.includes(layer) && layer.hasImage && !layer.hidden && layer.dotsOn && !(layerSlot === 'drawing' && showingPrev());
+      const visible = !!f && stack.includes(layer) && layer.hasImage && !layer.hidden && !(layerSlot === 'drawing' && showingPrev()) && (!solo || solo === layerSlot);
       dotEls[paneSlot][layerSlot].forEach((el, i) => {
         const dot = layer.dots[i];
         el.hidden = !(visible && dot);
         if (el.hidden) return;
         const q = layer.toPane(dot);
-        el.style.transform = `translate(${pane.width / 2 + q.x}px, ${pane.height / 2 + q.y}px)`;
+        const p = { x: pane.width / 2 + q.x, y: pane.height / 2 + q.y };
+        el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        el.classList.toggle('paired', !!(layers.drawing.dots[i] && layers.reference.dots[i]));
+        pt[layerSlot][i] = p;
       });
     }
+    const lk = links[paneSlot];
+    for (const layerSlot of SLOTS) setLine(lk.intra[layerSlot], pt[layerSlot][0], pt[layerSlot][1]);
+    const review = !!f && f.step === 'review' && state.layout === 'overlay';
+    [0, 1].forEach((i) => {
+      const a = pt.reference[i], b = pt.drawing[i];
+      const far = a && b && Math.hypot(a.x - b.x, a.y - b.y) > 1.5;
+      lk.cross[i].style.stroke = i ? 'var(--dot-2)' : 'var(--accent)';
+      setLine(lk.cross[i], review && far ? a : null, b);
+    });
   }
 
-  /** The image a tap in this pane should place a dot on, if any. */
-  function dotLayerIn(paneSlot) {
-    const candidates = layersInPane(paneSlot).filter((l) => l.hasImage && !l.hidden && l.dotsOn);
-    if (candidates.length < 2) return candidates[0] || null;
-    return layers[state.dotTarget];
-  }
-
-  function placeDot(paneSlot, x, y) {
-    const layer = dotLayerIn(paneSlot);
-    if (!layer || (layer === layers.drawing && showingPrev())) return;
-    const i = layer.dots.findIndex((d) => !d);
-    if (i < 0) {
-      toast('Both dots are placed. Drag one to adjust it, or double-tap it to remove it.');
-      return;
+  // ---- loupe: a magnifier above the finger while a dot is dragged with touch or pen
+  function drawLoupe(paneSlot, layerSlot, i, e) {
+    const pane = panes[paneSlot];
+    const q = layers[layerSlot].toPane(layers[layerSlot].dots[i]);
+    const cx = pane.width / 2 + q.x, cy = pane.height / 2 + q.y, k = pane.dpr, S = 44.8;
+    const ctx = loupe.getContext('2d');
+    ctx.fillStyle = PANE_BG;
+    ctx.fillRect(0, 0, 224, 224);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(pane.canvas, (cx - S / 2) * k, (cy - S / 2) * k, S * k, S * k, 0, 0, 224, 224);
+    ctx.lineCap = 'round';
+    for (const [w, c] of [[5, 'rgba(255,255,255,.85)'], [2.4, PAIR[i].hex]]) {
+      ctx.lineWidth = w;
+      ctx.strokeStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(112, 40); ctx.lineTo(112, 98); ctx.moveTo(112, 126); ctx.lineTo(112, 184);
+      ctx.moveTo(40, 112); ctx.lineTo(98, 112); ctx.moveTo(126, 112); ctx.lineTo(184, 112);
+      ctx.stroke();
     }
-    layer.dots[i] = layer.fromPane({ x, y });
+    const vv = window.visualViewport;
+    const vw = vv ? vv.width : innerWidth, vh = vv ? vv.height : innerHeight;
+    const x = Math.min(vw - 62, Math.max(62, e.clientX));
+    let y = e.clientY < 130 ? e.clientY + 80 : e.clientY - 80;
+    y = Math.min(vh - 62, Math.max(62, y));
+    loupe.style.left = `${x - 56}px`;
+    loupe.style.top = `${y - 56}px`;
+    loupe.hidden = false;
+  }
+
+  // ---- reference-spot thumbnail, captured from the pane canvas right after a reference dot is placed
+  function captureCrop(i) {
+    const slot = state.layout === 'overlay' ? 'drawing' : 'reference';
+    const pane = panes[slot];
+    const q = layers.reference.toPane(layers.reference.dots[i]);
+    const cx = pane.width / 2 + q.x, cy = pane.height / 2 + q.y, k = pane.dpr, S = 96;
+    const c = document.createElement('canvas');
+    c.width = c.height = 144;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = PANE_BG;
+    ctx.fillRect(0, 0, 144, 144);
+    try { ctx.drawImage(pane.canvas, (cx - S / 2) * k, (cy - S / 2) * k, S * k, S * k, 0, 0, 144, 144); } catch { /* nothing to show */ }
+    ctx.lineWidth = 3;
+    for (const [w, col] of [[5, 'rgba(255,255,255,.9)'], [3, PAIR[i].hex]]) {
+      ctx.lineWidth = w;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      if (i === 0) ctx.arc(72, 72, 15, 0, Math.PI * 2);
+      else ctx.rect(57, 57, 30, 30);
+      ctx.stroke();
+    }
+    return c;
+  }
+
+  // ---- state machine
+  const dotsFar = (layer) => {
+    const a = layer.dots[0], b = layer.dots[1];
+    if (!a || !b) return true;
+    return Math.hypot(a.x - b.x, a.y - b.y) >= 0.12 * Math.hypot(layer.source.width, layer.source.height);
+  };
+
+  /** The first thing still to do, in the order R1, R2, D1, D2 ('review' when nothing is missing). */
+  function nextStep() {
+    const f = state.dotFlow, r = layers.reference, d = layers.drawing, one = f.oneDot;
+    if (!r.dots[0]) return 'R1';
+    if (!one && (!r.dots[1] || (!f.accepted.R2 && !dotsFar(r)))) return 'R2';
+    if (!d.dots[0]) return 'D1';
+    if (!one && (!d.dots[1] || (!f.accepted.D2 && !dotsFar(d)))) return 'D2';
+    return 'review';
+  }
+
+  const bothLoaded = () => SLOTS.every((s) => layers[s].hasImage);
+
+  function openFlow() {
+    if (state.dotFlow) return;
+    if (!bothLoaded()) { toast('Needs both a drawing and a reference'); return; }
+    cancelMatch();
+    closeStrip();
+    setMoreOpen(false);
+    SLOTS.forEach((s) => setTrayOpen(s, false));
+    for (const s of SLOTS) layers[s].hidden = false;
+    state.showPrev = false;
+    const d = layers.drawing, r = layers.reference;
+    const f = {
+      step: 'R1',
+      oneDot: !!(r.dots[0] && d.dots[0] && !r.dots[1] && !d.dots[1]),
+      snapshot: snapshotViews(),
+      crops: [null, null],
+      accepted: { R2: !!r.dots[1], D2: !!d.dots[1] }, // dots that were already there are not second-guessed
+      notice: '', warn: '', undone: false, firstRun: false, returnStep: null, noticeTimer: 0,
+    };
+    state.dotFlow = f;
+    if (!state.tipDots) {
+      state.tipDots = true;
+      scheduleSave();
+      f.firstRun = true;
+      f.step = 'intro';
+      f.returnStep = nextStep();
+    } else {
+      f.step = nextStep();
+    }
+    if (f.step === 'review' && d.aligned && d.alignSource === 'dots') f.warn = '';
+    flowRefresh();
+  }
+
+  /** Close the flow. `quiet`: no toast. Everything (dots and placement) goes back to how it was when the flow opened. */
+  function cancelFlow(quiet = false) {
+    const f = state.dotFlow;
+    if (!f) return;
+    animToken++;
+    clearTimeout(f.noticeTimer);
+    const S = f.snapshot;
+    layers.drawing.applyView(S.d);
+    layers.reference.applyView(S.r);
+    if (S.p && prevLayer.hasImage) prevLayer.applyView(S.p);
+    closeFlow();
+    if (!quiet) toast('Line-up cancelled. Nothing was changed.');
+  }
+
+  function closeFlow() {
+    const f = state.dotFlow;
+    if (!f) return;
+    clearTimeout(f.noticeTimer);
+    const hadFocus = coachEl.contains(document.activeElement) || document.activeElement.classList.contains('dot');
+    state.dotFlow = null;
+    loupe.hidden = true;
     syncUI();
     requestRender();
+    if (hadFocus) {
+      const t = $('[data-action="lineup"]', toolsEls[state.active]);
+      if (t && t.offsetParent) t.focus({ preventScroll: true });
+    }
+  }
+
+  function toggleFlow() {
+    if (state.dotFlow) cancelFlow();
+    else openFlow();
+  }
+
+  /** Re-evaluate what is missing; align when all is there; update targeting, the coach and the canvas. */
+  function flowAdvance() {
+    const f = state.dotFlow;
+    if (!f || f.step === 'intro') return;
+    clearTimeout(f.noticeTimer);
+    f.notice = '';
+    const next = nextStep();
+    if (next !== f.step) f.flipped = false; // a new step lets the coach pick its edge again
+    f.step = next;
+    if (next === 'review') alignFlow();
+    flowRefresh();
+  }
+
+  function flowRefresh() {
+    const f = state.dotFlow;
+    const slot = f && stepSlot(f.step);
+    if (slot && state.active !== slot) state.active = slot; // the target image becomes the selected one by itself
+    if (f && f.step === 'R2' && IS_TOUCH && !touchTipDone) f.touchTip = true;
+    syncUI();
+    requestRender();
+  }
+
+  /** Move the drawing so its dots land on the reference's. Review state afterwards (or back to a step on error). */
+  function alignFlow() {
+    const f = state.dotFlow;
+    const res = dotsTarget();
+    f.undone = false;
+    if (res.error) {
+      f.step = res.pairs && res.pairs.length === 2 ? 'D2' : 'D1';
+      f.accepted.D2 = false;
+      f.notice = 'The two dots sit on the same spot. Move one away.';
+      return;
+    }
+    f.warn = res.pairs.length === 2 ? suspiciousMessage(res.target) : '';
+    applyAlignment(res.target, '', { source: 'dots', quiet: true });
+  }
+
+  /** A warning when the match moved the drawing a lot (probably one dot on a different spot). */
+  function suspiciousMessage(t) {
+    const d = layers.drawing, r = layers.reference;
+    let ang = (t.angle - r.angle) % (2 * Math.PI);
+    if (ang > Math.PI) ang -= 2 * Math.PI;
+    if (ang < -Math.PI) ang += 2 * Math.PI;
+    const deg = Math.abs(ang) * 180 / Math.PI;
+    const fit = (l) => {
+      const b = l.bounds, fr = l.frame || { w: panes.drawing.width, h: panes.drawing.height };
+      return Math.min((fr.w - 24) / b.w, (fr.h - 24) / b.h);
+    };
+    const ratio = (t.scale / r.scale) / (fit(d) / fit(r));
+    const parts = [];
+    if (deg > 45) parts.push(`turned ${Math.round(deg)} degrees`);
+    if (ratio > 3 || ratio < 1 / 3) parts.push(ratio > 1 ? `${ratio.toFixed(1)}x larger` : `${(1 / ratio).toFixed(1)}x smaller`);
+    return parts.length ? `That moved the drawing a lot (${parts.join(', ')}).` : '';
+  }
+
+  function removeDot(layerSlot, i) {
+    const f = state.dotFlow;
+    if (!f || !layers[layerSlot].dots[i]) return;
+    layers[layerSlot].dots[i] = null;
+    const step = `${layerSlot === 'reference' ? 'R' : 'D'}${i + 1}`;
+    f.accepted[step] = false;
+    if (layerSlot === 'reference') f.crops[i] = null;
+    if (step === 'R1' || step === 'R2') f.oneDot = false;
+    if (f.step === 'intro') return syncUI();
+    flowAdvance();
+  }
+
+  function flowBack() {
+    const f = state.dotFlow;
+    if (!f || f.step === 'intro') return;
+    for (let k = ORDER.length - 1; k >= 0; k--) {
+      const s = ORDER[k], slot = stepSlot(s), i = stepIdx(s);
+      if (layers[slot].dots[i]) { removeDot(slot, i); return; }
+    }
+  }
+
+  function flowStartOver() {
+    const f = state.dotFlow;
+    for (const s of SLOTS) layers[s].dots = [null, null];
+    f.crops = [null, null];
+    f.accepted = { R2: false, D2: false };
+    f.oneDot = false;
+    f.warn = '';
+    flowAdvance();
+  }
+
+  function flowStart() {
+    const f = state.dotFlow;
+    if (!f || f.step !== 'intro') return;
+    f.step = nextStep();
+    if (f.step === 'review') alignFlow();
+    flowRefresh();
+  }
+
+  function flowHelp() {
+    const f = state.dotFlow;
+    if (!f || f.step === 'intro') return;
+    f.returnStep = f.step;
+    f.step = 'intro';
+    flowRefresh();
+  }
+
+  function flowDone() {
+    const f = state.dotFlow;
+    if (!f || f.step !== 'review') return;
+    const d = layers.drawing;
+    const lined = d.aligned && d.alignSource === 'dots' && !f.undone;
+    const pairs = dotPairs().length;
+    const S = f.snapshot;
+    closeFlow();
+    if (lined) toast(pairs === 2 ? 'Lined up on both dots: position, size and rotation.' : 'Centred on one dot.', setUndo(S, 'Alignment undone.'));
+  }
+
+  /** Undo inside the flow: the placement goes back to how it was when the flow opened; the dots stay. */
+  function flowUndo() {
+    const f = state.dotFlow;
+    if (!f || f.step !== 'review') return;
+    animToken++;
+    const S = f.snapshot;
+    layers.drawing.applyView({ ...S.d, dots: layers.drawing.dots });
+    layers.reference.applyView({ ...S.r, dots: layers.reference.dots });
+    if (S.p && prevLayer.hasImage) prevLayer.applyView(S.p);
+    f.undone = true;
+    f.warn = '';
+    flowRefresh();
+  }
+
+  function flowNotice(text, shake = false) {
+    const f = state.dotFlow;
+    clearTimeout(f.noticeTimer);
+    f.notice = text;
+    f.noticeTimer = setTimeout(() => { if (state.dotFlow === f) { f.notice = ''; renderCoach(); positionCoach(); } }, 5000);
+    renderCoach();
+    positionCoach();
+    if (shake) {
+      coachEl.classList.remove('shake');
+      void coachEl.offsetWidth;
+      coachEl.classList.add('shake');
+    }
+  }
+
+  /** A tap (or Enter at the centre) at pane-centred (x, y) in `paneSlot`'s pane. */
+  function flowTap(paneSlot, x, y, keyboard = false) {
+    const f = state.dotFlow;
+    const step = f && f.step;
+    const target = stepSlot(step);
+    if (!target) return; // intro and review: taps place nothing
+    if (!keyboard) {
+      if (performance.now() < dotLock) return;
+      const cr = coachEl.getBoundingClientRect(), pr = panes[paneSlot].canvas.getBoundingClientRect();
+      const cx = pr.left + pr.width / 2 + x, cy = pr.top + pr.height / 2 + y;
+      if (!coachEl.hidden && cx >= cr.left && cx <= cr.right && cy >= cr.top && cy <= cr.bottom) { // a tap on the coach never places a dot: it moves the box out of the way
+        f.flipped = !f.flipped;
+        positionCoach();
+        return;
+      }
+    }
+    if (state.layout !== 'overlay' && paneSlot !== target) {
+      flowNotice(target === 'reference'
+        ? `That's the drawing. ${TAP()} the reference (the other image).`
+        : `That's the reference. ${TAP()} your drawing (the other image).`, true);
+      return;
+    }
+    const layer = layers[target];
+    if (!layer.hasImage) return;
+    const p = layer.fromPane({ x, y });
+    if (Math.abs(p.x) > layer.source.width / 2 || Math.abs(p.y) > layer.source.height / 2) {
+      flowNotice(`${TAP()} on the image itself.`);
+      return;
+    }
+    const i = stepIdx(step);
+    layer.dots[i] = p;
+    dotLock = performance.now() + 500;
+    if (step === 'R2') touchTipDone = true;
+    if (target === 'reference') {
+      render();
+      f.crops[i] = captureCrop(i);
+    }
+    flowAdvance();
+    if (keyboard) {
+      render();
+      const el = dotEls[state.layout === 'overlay' ? 'drawing' : target][target][i];
+      if (!el.hidden) el.focus({ preventScroll: true });
+    }
+  }
+
+  // ---- the coach
+  const bold = (text) => {
+    const frag = document.createDocumentFragment();
+    String(text).split('**').forEach((part, k) => {
+      if (!part) return;
+      if (k % 2) { const b = document.createElement('strong'); b.textContent = part; frag.appendChild(b); }
+      else frag.appendChild(document.createTextNode(part));
+    });
+    return frag;
+  };
+
+  function coachContent() {
+    const f = state.dotFlow, step = f.step, tap = TAP().toLowerCase(), Tap = TAP();
+    const total = f.oneDot ? 2 : 4;
+    const stepNo = { R1: 1, R2: 2, D1: f.oneDot ? 2 : 3, D2: 4 }[step];
+    const solo = state.layout === 'overlay' ? (stepSlot(step) === 'reference' ? ' Now showing only the reference.' : ' Now showing only your drawing.') : '';
+    const c = { l1: '', l2: '', tip: '', actions: [], warn: false, art: false, solo: stepSlot(step) ? solo : '' };
+    const d = layers.drawing;
+    const pairs = dotPairs().length;
+    switch (step) {
+      case 'intro':
+        Object.assign(c, { l1: 'Line up with dots', l2: 'Mark the same two spots on both images. The app then moves, resizes and turns your drawing to match.', art: true, actions: ['start'] });
+        return c;
+      case 'R1':
+        c.l1 = `Step 1 of ${total}`;
+        c.l2 = `${Tap} a clear spot on the **REFERENCE**, such as the corner of an eye.`;
+        if (f.firstRun) c.tip = 'Good spots are sharp and easy to find in both images: corners of eyes, the tip of the nose, where two lines cross. Pick two that are far apart.';
+        break;
+      case 'R2':
+        c.l1 = `Step 2 of ${total}`;
+        c.l2 = `${Tap} a second spot on the **REFERENCE**, far from the first.${f.touchTip && IS_TOUCH ? ' Drag the dot to adjust it. Pinch to zoom in for precision.' : ''}`;
+        c.actions = ['one'];
+        break;
+      case 'D1':
+        c.l1 = `Step ${stepNo} of ${total}`;
+        c.l2 = f.oneDot ? `Now ${tap} the **same spot** on **YOUR DRAWING**.` : `Now ${tap} the **same spot as dot 1** on **YOUR DRAWING**.`;
+        break;
+      case 'D2':
+        c.l1 = `Step 4 of ${total}`;
+        c.l2 = `Last one: ${tap} the **same spot as dot 2** on **YOUR DRAWING**.`;
+        break;
+      case 'review':
+        if (f.undone) { c.l1 = 'Put back where it was'; c.l2 = 'Nothing is lined up now. Drag a dot to line up again, or start over.'; }
+        else if (pairs === 2) { c.l1 = 'Lined up on both dots'; c.l2 = 'Check the fit. Drag a dot to fine-tune; it re-aligns when you let go.'; }
+        else { c.l1 = 'Centred on one dot'; c.l2 = 'Position matched; size and rotation unchanged.'; }
+        if (f.warn && !f.undone) { c.l1 = f.warn; c.l2 = 'If it looks wrong, one dot is probably on a different spot. Drag it, or start over.'; c.warn = true; }
+        c.actions = pairs === 2 || f.undone ? ['done', 'undo', 'again'] : ['done', 'second', 'undo'];
+        return c;
+    }
+    if ((step === 'R2' || step === 'D2') && layers[stepSlot(step)].dots[1]) { // placed too close to dot 1
+      c.l2 = 'Those two dots are very close. Spots far apart give a steadier match.';
+      c.actions = ['move', 'keep'];
+      c.warn = true;
+    }
+    if (f.notice) { c.l2 = f.notice; c.warn = false; }
+    return c;
+  }
+
+  let coachKey = '';
+  function renderCoach() {
+    const f = state.dotFlow;
+    coachEl.hidden = !f;
+    if (!f) { coachKey = ''; return; }
+    const c = coachContent();
+    const r = layers.reference, d = layers.drawing;
+    const present = [r.dots[0], r.dots[1], d.dots[0], d.dots[1]].map((v) => (v ? 1 : 0)).join('');
+    const key = [f.step, f.oneDot, c.l1, c.l2, c.tip, c.actions.join(), present, c.warn, state.layout === 'overlay', !!f.crops[stepIdx(f.step)]].join('|');
+    if (key === coachKey) return;
+    coachKey = key;
+    coachQ('.coach-step').textContent = c.l1;
+    coachQ('.coach-step').classList.toggle('warn', c.warn);
+    const text = coachQ('.coach-text');
+    text.textContent = '';
+    text.appendChild(bold(c.l2));
+    if (c.solo) { const s = document.createElement('span'); s.className = 'sr-only'; s.textContent = c.solo; text.appendChild(s); }
+    const tip = coachQ('.coach-tip');
+    tip.hidden = !c.tip;
+    tip.textContent = c.tip;
+    coachQ('.coach-art').style.display = c.art ? '' : 'none';
+    coachEl.classList.toggle('is-intro', c.art);
+    coachQ('#coach-live').textContent = `${c.l1}. ${text.textContent}`;
+    // pips: reference pair first (dashed), then the drawing pair (solid); filled when placed, the current one pulses
+    $$('.pip', coachEl).forEach((p, k) => {
+      const step = ORDER[k];
+      p.classList.toggle('on', present[k] === '1');
+      p.classList.toggle('now', f.step === step);
+      p.hidden = f.oneDot && k % 2 === 1;
+    });
+    // thumbnail of the reference spot, on the drawing steps
+    const thumb = coachQ('.coach-thumb');
+    const crop = (f.step === 'D1' || f.step === 'D2') && f.crops[stepIdx(f.step)];
+    thumb.hidden = !crop;
+    thumb.textContent = '';
+    if (crop) {
+      thumb.appendChild(crop);
+      const cap = document.createElement('figcaption');
+      cap.textContent = `Reference dot ${stepIdx(f.step) + 1}`;
+      thumb.appendChild(cap);
+    }
+    const any = present.includes('1');
+    const show = { back: f.step !== 'intro' && any, help: f.step !== 'intro', cancel: true, flip: true };
+    for (const b of $$('[data-coach]', coachEl)) {
+      const k = b.dataset.coach;
+      b.hidden = k in show ? !show[k] : !c.actions.includes(k);
+    }
+    coachQ('.coach-actions').hidden = !c.actions.some((k) => k !== 'one'); // "Use one spot" lives in the top row (wide) or beside the text (phones)
+  }
+
+  /** Over the top edge of the target image's pane body (the bottom edge when the dots being worked on are up there). */
+  function positionCoach() {
+    const f = state.dotFlow;
+    if (!f) return;
+    const overlay = state.layout === 'overlay';
+    const slot = overlay ? 'drawing' : stepSlot(f.step) || 'drawing';
+    const body = $('.pane-body', paneEls[slot]).getBoundingClientRect();
+    const ws = $('.workspace').getBoundingClientRect();
+    let span = body;
+    if (!overlay && state.layout === 'side' && body.width < 420) span = $('.panes').getBoundingClientRect(); // narrow phones: span both panes
+    const width = Math.min(460, span.width - 16);
+    coachEl.style.width = `${width}px`;
+    const h = coachEl.offsetHeight;
+    const left = Math.min(ws.right - 4 - width, Math.max(ws.left + 4, span.left + span.width / 2 - width / 2));
+    const topY = body.top + 8, botY = body.bottom - 8 - h;
+    const hits = (y0) => SLOTS.some((s) => dotEls[slot][s].some((el) => {
+      if (el.hidden) return false;
+      const r = el.getBoundingClientRect(), cy = r.top + r.height / 2, cx = r.left + r.width / 2;
+      return cx > left - 20 && cx < left + width + 20 && cy > y0 - 24 && cy < y0 + h + 24;
+    }));
+    // On the drawing steps the spot is probably where the reference dot sits, relative to its image: keep the coach off it.
+    let hintY = null;
+    if (stepSlot(f.step) === 'drawing') {
+      const rd = layers.reference.dots[stepIdx(f.step)], d = layers.drawing, r = layers.reference;
+      if (rd && d.hasImage && r.hasImage) {
+        const q = d.toPane({ x: (rd.x / r.source.width) * d.source.width, y: (rd.y / r.source.height) * d.source.height });
+        hintY = body.top + panes[slot].height / 2 + q.y;
+      }
+    }
+    const hintHits = (y0) => hintY !== null && hintY > y0 - 24 && hintY < y0 + h + 24;
+    // how much of the shown image(s) each edge would cover: the coach takes the freer edge, or the opposite one when flipped
+    const pane = panes[slot];
+    const shown = (overlay ? soloSlot() ? [soloSlot()] : SLOTS : [slot]).map((s) => layers[s]).filter((l) => l.hasImage && !l.hidden);
+    const covered = (y0) => {
+      let area = 0;
+      for (const l of shown) {
+        const b = l.bounds, c = Math.cos(l.angle), s = Math.sin(l.angle);
+        const hw = (b.w * l.scale) / 2, hh = (b.h * l.scale) / 2;
+        const ys = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([px, py]) => body.top + pane.height / 2 + l.y + px * s + py * c);
+        const y1 = Math.max(y0, Math.min(...ys)), y2 = Math.min(y0 + h, Math.max(...ys));
+        area += Math.max(0, y2 - y1);
+      }
+      return area + (hits(y0) ? 200 : 0) + (hintHits(y0) ? 800 : 0);
+    };
+    let top = covered(botY) < covered(topY) ? botY : topY;
+    if (f.flipped) top = top === topY ? botY : topY;
+    coachEl.style.left = `${left - ws.left}px`;
+    coachEl.style.top = `${top - ws.top}px`;
+  }
+
+  coachEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-coach]');
+    const f = state.dotFlow;
+    if (!b || !f) return;
+    switch (b.dataset.coach) {
+      case 'back': flowBack(); break;
+      case 'help': flowHelp(); break;
+      case 'flip': f.flipped = !f.flipped; positionCoach(); break;
+      case 'cancel': cancelFlow(); break;
+      case 'start': flowStart(); break;
+      case 'one': f.oneDot = true; flowAdvance(); break;
+      case 'second': f.oneDot = false; flowAdvance(); break;
+      case 'done': flowDone(); break;
+      case 'undo': flowUndo(); break;
+      case 'again': flowStartOver(); break;
+      case 'move': layers[stepSlot(f.step)].dots[1] = null; flowAdvance(); break;
+      case 'keep': f.accepted[f.step] = true; flowAdvance(); break;
+      default:
+    }
+  });
+  coachEl.addEventListener('animationend', () => coachEl.classList.remove('shake'));
+
+  /** Keep the page's controls in step with the flow (called from syncUI). */
+  function syncFlow() {
+    const f = state.dotFlow;
+    const steps = inSteps();
+    document.body.dataset.dotflow = !f ? '' : steps ? 'step' : f.step === 'intro' ? 'intro' : 'review';
+    ui.overlayBar.inert = steps;
+    for (const slot of SLOTS) {
+      const target = steps && state.layout !== 'overlay' && stepSlot(f.step) === slot;
+      paneEls[slot].classList.toggle('dot-target', target);
+      paneEls[slot].classList.toggle('placing-dots', steps && (state.layout === 'overlay' ? slot === 'drawing' : stepSlot(f.step) === slot));
+      if (steps) els[slot].tab.setAttribute('aria-disabled', 'true');
+      else els[slot].tab.removeAttribute('aria-disabled');
+    }
+    renderCoach();
+    positionCoach();
   }
 
   // ---------------------------------------------------------------- alignment
@@ -306,27 +952,68 @@
     setTimeout(finish, ALIGN_MS + 300); // background tabs throttle rAF; never leave it half-way
   }
 
-  /** Move the drawing to `target`, with an Undo offered in the toast. */
-  function applyAlignment(target, message, { dots = null, carry = true, aligned = true } = {}) {
+  /** Views of all three layers, so Fit all / Z can put everything back exactly. */
+  function snapshotViews() {
+    return {
+      d: layers.drawing.toJSON(),
+      r: layers.reference.toJSON(),
+      p: prevLayer.hasImage ? prevLayer.toJSON() : null,
+    };
+  }
+
+  /** Restore a snapshot; `message` is the toast ('' for none). */
+  function restoreViews(S, message = 'Alignment undone.') {
+    animToken++;
+    alignJob++; // a match still running was for the state being undone
+    setBusy(null);
+    layers.drawing.applyView(S.d);
+    layers.reference.applyView(S.r);
+    if (S.p && prevLayer.hasImage) prevLayer.applyView(S.p);
+    undoAlign = null;
+    syncUI();
+    requestRender();
+    if (message) toast(message);
+  }
+
+  /** Make Z (and the toast's Undo button) put `S` back; returns the toast action. */
+  function setUndo(S, message) {
+    undoAlign = () => restoreViews(S, message);
+    return { label: 'Undo', run: () => undoAlign && undoAlign() };
+  }
+
+  /**
+   * Move the drawing to `target`, with an Undo offered in the toast. `snapshot` (all three layers) is
+   * what Undo restores when given. `source` is how the alignment was found ('dots' | 'auto'); a fresh
+   * alignment is never "tuned" (adjusted by hand afterwards).
+   */
+  function applyAlignment(target, message, { dots = null, carry = true, aligned = true, source = null, tuned = false, snapshot = null, quiet = false } = {}) {
     const d = layers.drawing;
+    const S = snapshot || snapshotViews();
     const before = d.toJSON();
-    const prevBefore = prevLayer.hasImage ? prevLayer.toJSON() : null;
     if (carry) carryPrevious(before, target);
     if (dots) d.dots = dots;
     d.moved = true;
     d.aligned = aligned;
+    d.alignSource = aligned ? source : null;
+    d.tuned = aligned && tuned;
     animateLayer(d, target);
-    undoAlign = () => {
-      animToken++;
-      d.applyView(before);
-      if (prevBefore) prevLayer.applyView(prevBefore);
-      undoAlign = null;
-      syncUI();
-      requestRender();
-      toast('Alignment undone.');
-    };
+    if (quiet) return; // the Line up flow reports once, when it is done
+    const action = setUndo(S, 'Alignment undone.');
     syncUI();
-    toast(message, { label: 'Undo', run: () => undoAlign && undoAlign() });
+    toast(message, action);
+  }
+
+  /** Called when the user moves things by hand: an alignment found earlier is no longer pending, and a solo move is "tuning". */
+  function noteManualMove(targets) {
+    if (alignKind === 'fit' && alignJob) cancelMatch();
+    const d = layers.drawing;
+    if (d.aligned && d.hasImage && layers.reference.hasImage && !(targets.includes(d) && targets.includes(layers.reference))) d.tuned = true;
+  }
+
+  function cancelMatch() {
+    alignJob++;
+    alignKind = null;
+    setBusy(null);
   }
 
   function dotPairs() {
@@ -334,14 +1021,13 @@
     return [0, 1].filter((i) => d.dots[i] && r.dots[i]);
   }
 
-  /** Move the drawing so its dots land on the reference's dots. */
-  function alignByDots() {
+  /**
+   * The drawing's placement that lands its dots on the reference's dots (one pair: position only; two:
+   * position, size and rotation), from the placements as they are now. { error } if the dots coincide.
+   */
+  function dotsTarget() {
     const d = layers.drawing, r = layers.reference;
     const pairs = dotPairs();
-    if (!d.hasImage || !r.hasImage || !pairs.length) {
-      toast('Mark the same feature in both images first: switch on Dots in each pane and tap the image.');
-      return;
-    }
     render(); // make sure both placements are current
     const target = placement(d);
     if (pairs.length === 2) {
@@ -350,10 +1036,7 @@
       const ax = d2.x - d1.x, ay = d2.y - d1.y;
       const bx = r2.x - r1.x, by = r2.y - r1.y;
       const den = ax * ax + ay * ay;
-      if (den < 1 || bx * bx + by * by < 1) {
-        toast('The two dots sit on top of each other. Move them apart and try again.');
-        return;
-      }
+      if (den < 1 || bx * bx + by * by < 1) return { error: 'The two dots sit on the same spot. Move one away.', pairs };
       // Complex ratio z = b / a: |z| is the scale, arg z the rotation.
       const zr = (bx * ax + by * ay) / den;
       const zi = (by * ax - bx * ay) / den;
@@ -361,14 +1044,24 @@
       target.angle = Math.atan2(zi, zr);
       target.x = r1.x - (zr * d1.x - zi * d1.y);
       target.y = r1.y - (zi * d1.x + zr * d1.y);
-      applyAlignment(target, 'Aligned on both dots: position, size and rotation.');
-    } else {
-      const i = pairs[0];
-      const rp = r.toPane(r.dots[i]), dp = d.toPane(d.dots[i]);
-      target.x += rp.x - dp.x;
-      target.y += rp.y - dp.y;
-      applyAlignment(target, `Centred on dot ${i + 1}. Add a second dot to match size and rotation too.`);
+      return { target, pairs, message: 'Aligned on both dots: position, size and rotation.' };
     }
+    const i = pairs[0];
+    const rp = r.toPane(r.dots[i]), dp = d.toPane(d.dots[i]);
+    target.x += rp.x - dp.x;
+    target.y += rp.y - dp.y;
+    return { target, pairs, message: `Centred on dot ${i + 1}. Add a second dot to match size and rotation too.` };
+  }
+
+  /** Toast action that opens the guided Line up flow. */
+  const lineUpAction = () => ({ label: 'Line up with dots', run: openFlow });
+
+  /** Move the drawing so its dots land on the reference's dots (used by the tests and the console; the flow aligns by itself). */
+  function alignByDots() {
+    if (!bothLoaded() || !dotPairs().length) return;
+    const res = dotsTarget();
+    if (res.error) toast(res.error);
+    else applyAlignment(res.target, res.message, { source: 'dots' });
   }
 
   function setBusy(text) {
@@ -376,7 +1069,28 @@
     ui.status.textContent = text || '';
   }
 
-  const NO_MATCH_HINT = 'A sketch and a photo can differ too much for automatic matching. Use Dots: mark the same two features in both images, then Align.';
+  /** Cache key for the current pair of photos and their orientations (the match is independent of placement). */
+  function matchKey() {
+    const a = shelf.active('drawing'), b = shelf.active('reference');
+    if (!a || !b) return null;
+    const o = (l) => `${l.rotation}${l.flipH ? 1 : 0}${l.flipV ? 1 : 0}`;
+    return `${a}|${b}|${o(layers.drawing)}|${o(layers.reference)}`;
+  }
+
+  /** Aligner.estimate for the current pair, from the cache when this exact pair was matched before. */
+  async function matchPair(job) {
+    const key = matchKey();
+    if (key && matchCache.has(key)) return matchCache.get(key);
+    setBusy('Aligning…');
+    const res = await Aligner.estimate(Aligner.rasterize(layers.drawing), Aligner.rasterize(layers.reference), (p) => {
+      if (job === alignJob) setBusy(`Aligning… ${Math.round(p * 100)}%`);
+    });
+    if (key) {
+      matchCache.set(key, res);
+      if (matchCache.size > 24) matchCache.delete(matchCache.keys().next().value);
+    }
+    return res;
+  }
 
   /** Estimate drawing -> reference and apply it only if the match is confident. */
   async function runAutoAlign(manual) {
@@ -388,18 +1102,16 @@
     render();
     if (!r.frame) return null;
     const job = ++alignJob;
-    setBusy('Aligning…');
+    alignKind = null;
     try {
-      const res = await Aligner.estimate(Aligner.rasterize(d), Aligner.rasterize(r), (p) => {
-        if (job === alignJob) setBusy(`Aligning… ${Math.round(p * 100)}%`);
-      });
+      const res = await matchPair(job);
       if (job !== alignJob) return null;
-      if (res.confident) applyAlignment(placementFromMatch(placement(r), res), 'Auto-aligned to the reference.');
-      else toast(`${manual ? 'No confident match found, so nothing was moved.' : "Couldn't auto-align with confidence, so nothing was moved."} ${NO_MATCH_HINT}`);
+      if (res.confident) applyAlignment(placementFromMatch(placement(r), res), 'Auto-aligned to the reference.', { source: 'auto' });
+      else toast("Couldn't line them up automatically, so nothing was moved.", lineUpAction());
       return res;
     } catch (err) {
       console.warn('Auto-align failed:', err);
-      if (manual) toast('Auto-align failed. Use Dots and Align instead.');
+      if (manual) toast("Couldn't line them up automatically, so nothing was moved.", lineUpAction());
       return null;
     } finally {
       if (job === alignJob) setBusy(null);
@@ -436,6 +1148,7 @@
     requestRender();
 
     const job = ++alignJob;
+    alignKind = null;
     setBusy('Matching new photo…');
     try {
       const res = await Aligner.estimate(Aligner.rasterize(d), oldRaster, (p) => {
@@ -455,9 +1168,11 @@
           dots,
           carry: false,
           aligned: old.aligned,
+          source: old.alignSource,
+          tuned: old.tuned,
         });
       } else {
-        toast("Couldn't match the new photo to the previous one with confidence, so it sits where the old one was. Nudge it into place, or re-place the dots and Align.");
+        toast("Couldn't match the new photo to the previous one, so it sits where the old one was.", lineUpAction());
       }
       return res;
     } catch (err) {
@@ -523,6 +1238,8 @@
     state.outlineDetail = num(state.outlineDetail, 0, 1, 0.5);
     state.opacity = num(state.opacity, 0, 1, 0.5);
     state.tipFlick = state.tipFlick === true;
+    state.tipUnlink = state.tipUnlink === true;
+    state.tipDots = state.tipDots === true;
     if (!SLOTS.includes(state.overlayTop)) state.overlayTop = 'drawing';
     if (!SLOTS.includes(state.active)) state.active = 'drawing';
     state.cameraFacing = state.cameraFacing === 'user' ? 'user' : 'environment';
@@ -577,6 +1294,7 @@
       ? `Remove all ${n} saved photo${n === 1 ? '' : 's'} (${d} drawing, ${r} reference) and view settings from this browser?`
       : 'Remove all saved view settings from this browser?';
     if (!confirm(message)) return;
+    state.dotFlow = null;
     alignJob++;
     switchToken.drawing++;
     switchToken.reference++;
@@ -614,27 +1332,129 @@
   }
 
   /**
-   * Fit both images. If the drawing is aligned to the reference, the pair is
-   * fitted as one (reference fits, drawing follows) so the alignment survives.
+   * Fit one image to its pane and carry the other one (and the drawing's ghost) with it, so their
+   * relative placement is unchanged: the pair fit. Returns false when there is nothing to carry.
    */
-  function fitPair() {
+  function pairFit(anchor) {
+    const A = layers[anchor], B = layers[other(anchor)];
+    const frame = A.frame;
+    if (!A.hasImage || !B.hasImage || !frame) return false;
+    const from = placement(A);
+    const keep = anchor === 'drawing' ? { moved: A.moved, aligned: A.aligned, alignSource: A.alignSource, tuned: A.tuned } : null;
+    A.reset();
+    A.placeIn(frame.w, frame.h);
+    if (keep) Object.assign(A, keep); // the drawing stays aligned; only its placement changed
+    const to = placement(A);
+    const k = to.scale / from.scale;
+    const dA = to.angle - from.angle;
+    const c = Math.cos(dA), s = Math.sin(dA);
+    const movers = anchor === 'reference' ? withCompanions('drawing') : [B, ...(prevLayer.hasImage ? [prevLayer] : [])];
+    for (const l of movers) {
+      const dx = l.x - from.x, dy = l.y - from.y;
+      l.x = to.x + k * (dx * c - dy * s);
+      l.y = to.y + k * (dx * s + dy * c);
+      l.scale *= k;
+      l.angle += dA;
+    }
+    return true;
+  }
+
+  /**
+   * Fit all (F): fit the pair, then line up. A hand-tuned alignment is kept; otherwise existing dots
+   * win; otherwise a confident-only automatic match (never when it is not sure). Undo and Z restore
+   * everything. See section 2 of the overlay design spec.
+   */
+  async function fitAll() {
     const d = layers.drawing, r = layers.reference;
-    if (d.hasImage && r.hasImage && d.aligned && r.frame) {
-      const frame = r.frame;
-      const old = placement(r);
-      r.reset();
-      r.placeIn(frame.w, frame.h);
-      const k = r.scale / old.scale;
-      for (const l of withCompanions('drawing')) {
-        l.x = r.x + k * (l.x - old.x);
-        l.y = r.y + k * (l.y - old.y);
-        l.scale *= k;
+    cancelFlow(true); // Fit all re-places everything: an open Line up flow is closed first
+    cancelMatch();
+    if (!(d.hasImage && r.hasImage)) {
+      for (const layer of allLayers) layer.reset(); // 0 or 1 image: a plain fit of what is there
+      syncUI();
+      requestRender();
+      return;
+    }
+    render(); // placements and frames are current
+    const S = snapshotViews();
+    const wasAligned = d.aligned && pairFit('reference');
+    if (!wasAligned) for (const layer of allLayers) layer.reset(); // not paired: each fits on its own
+    render(); // place the layers that were reset
+    const undo = () => setUndo(S, 'Fit undone.');
+
+    if (wasAligned && d.tuned) {
+      syncUI();
+      requestRender();
+      toast('Fitted. Your hand-placed alignment was kept.', undo());
+      return;
+    }
+    if (dotPairs().length) {
+      const res = dotsTarget();
+      if (res.target) applyAlignment(res.target, 'Fitted and lined up on your dots.', { source: 'dots', snapshot: S });
+      else {
+        syncUI();
+        requestRender();
+        toast(`Fitted. ${res.error}`, undo());
       }
-    } else {
-      for (const layer of allLayers) layer.reset();
+      return;
     }
     syncUI();
     requestRender();
+    const job = ++alignJob;
+    alignKind = 'fit';
+    let res = null;
+    try {
+      res = await matchPair(job);
+    } catch (err) {
+      console.warn('Fit all matching failed:', err);
+    }
+    if (job !== alignJob) return; // the user moved something meanwhile: no result, no toast
+    alignKind = null;
+    setBusy(null);
+    if (res && res.confident) {
+      applyAlignment(placementFromMatch(placement(r), res), 'Fitted and lined up with the reference.', { source: 'auto', snapshot: S });
+    } else if (wasAligned) {
+      toast("Fitted. Couldn't find a better match, so your alignment was kept.", undo());
+    } else {
+      undo(); // Z still undoes; the toast button opens the guided flow
+      toast("Fitted both. Couldn't line them up automatically.", lineUpAction());
+    }
+  }
+
+  /** Shift+F: every image fitted on its own; any alignment is cleared. */
+  function plainFit() {
+    cancelFlow(true);
+    cancelMatch();
+    const S = snapshotViews();
+    for (const layer of allLayers) layer.reset();
+    syncUI();
+    requestRender();
+    toast('Each image fitted on its own. Alignment cleared.', setUndo(S, 'Fit undone.'));
+  }
+
+  /** The per-image Fit tool (and 0): never matches. With Link on and an alignment, the other image follows. */
+  function fitOne(slot) {
+    const d = layers.drawing;
+    cancelMatch();
+    render();
+    if (state.linked && d.aligned && d.hasImage && layers.reference.hasImage && pairFit(slot)) {
+      syncUI();
+      requestRender();
+      return;
+    }
+    const S = snapshotViews();
+    const dropped = d.aligned && d.hasImage && layers.reference.hasImage;
+    for (const l of withCompanions(slot)) l.reset();
+    d.aligned = false; // either image re-fitted on its own breaks the pairing
+    d.alignSource = null;
+    d.tuned = false;
+    syncUI();
+    requestRender();
+    if (dropped) {
+      toast(
+        slot === 'drawing' ? 'Drawing fitted on its own. It is no longer lined up with the reference.' : 'Reference fitted on its own. The drawing is no longer lined up with it.',
+        setUndo(S, 'Fit undone.'),
+      );
+    }
   }
 
   /** Hide or show a slot's image. In Overlay, hiding one shows the other (never an empty overlay). */
@@ -652,20 +1472,24 @@
   for (const slot of SLOTS) {
     new Gestures(panes[slot].canvas, {
       onPress: () => {
-        if (state.layout !== 'overlay' && layers[slot].hasImage) setActive(slot);
+        if (state.layout !== 'overlay' && layers[slot].hasImage && !inSteps()) setActive(slot); // while placing, the target stays selected
       },
       onPan: (dx, dy) => {
-        for (const l of gestureTargets(slot)) l.panBy(dx, dy);
+        const t = gestureTargets(slot);
+        noteManualMove(t);
+        for (const l of t) l.panBy(dx, dy);
         requestRender();
       },
       onZoom: (factor, x, y) => {
-        for (const l of gestureTargets(slot)) l.zoomAt(factor, x, y);
+        const t = gestureTargets(slot);
+        noteManualMove(t);
+        for (const l of t) l.zoomAt(factor, x, y);
         requestRender();
       },
-      onTap: (x, y) => placeDot(slot, x, y),
+      onTap: (x, y) => { if (state.dotFlow) flowTap(slot, x, y); },
       // Double-tap / double-click hides or shows the selected image (never fits).
       onDoubleTap: () => {
-        if (dotLayerIn(slot)) return; // taps are placing dots here
+        if (state.dotFlow) return; // taps are placing dots: never hide anything while the Line up flow is open
         toggleHidden(state.layout === 'overlay' ? state.active : slot);
       },
     });
@@ -701,6 +1525,7 @@
       toast(`Couldn't read that image${blob.type ? ` (${blob.type})` : ''}.`);
       return;
     }
+    cancelFlow(true); // a new photo closes the Line up flow
     saveCurrentView(slot);
     const res = await shelf.add(slot, canvas, blob, { resolve: (problem) => askShelfProblem(slot, problem) });
     if (res.error) storageFailed(res.error);
@@ -805,6 +1630,7 @@
   /** Put another photo of the slot's shelf on the easel. */
   async function switchPhoto(slot, id) {
     if (!shelf.record(id) || id === shelf.active(slot)) return;
+    cancelFlow(true);
     const token = ++switchToken[slot];
     alignJob++; // an alignment still running was for the photo being left
     setBusy(null);
@@ -887,6 +1713,7 @@
   }
 
   async function removePhoto(slot, id) {
+    cancelFlow(true);
     const wasActive = shelf.active(slot) === id;
     const next = shelf.neighbour(id);
     try {
@@ -1029,13 +1856,15 @@
       case 'paste':
         pasteInto(slot);
         return;
-      case 'align':
-        alignByDots();
+      case 'lineup':
+        toggleFlow();
         return;
       case 'auto':
+        cancelFlow(true);
         runAutoAlign(true);
         return;
       case 'hide':
+        if (inSteps()) return; // the target image stays visible while placing dots
         setHidden(slot, !layer.hidden);
         return; // setHidden syncs and re-renders itself
       case 'flipH':
@@ -1056,26 +1885,13 @@
       case 'contrast':
         layer.contrast = !layer.contrast;
         break;
-      case 'dots':
-        if (!layer.hasImage) return;
-        layer.dotsOn = !layer.dotsOn;
-        if (layer.dotsOn) {
-          layer.hidden = false; // dots can only be placed on a visible image
-          state.dotTarget = slot;
-          if (!dotHintShown) {
-            dotHintShown = true;
-            toast('Tap the image to place dot 1, then dot 2, on features you can find in both images. Drag a dot to adjust; double-tap it to remove.');
-          }
-        }
-        break;
       case 'prev':
-        if (!prevLayer.hasImage) return;
+        if (!prevLayer.hasImage || state.dotFlow) return;
         state.showPrev = !state.showPrev;
         break;
       case 'reset':
-        for (const l of withCompanions(slot)) l.reset();
-        layers.drawing.aligned = false; // either image re-fitted on its own breaks the pairing
-        break;
+        fitOne(slot); // syncs and re-renders itself
+        return;
       case 'clear':
         removeCurrent(slot); // removes the photo on the easel (after asking); syncs and re-renders itself
         return;
@@ -1092,7 +1908,7 @@
     const paneEl = paneEls[slot];
     const tools = template.content.firstElementChild.cloneNode(true);
     if (slot !== 'drawing') $$('.drawing-only', tools).forEach((el) => el.remove());
-    $('.pane-tools', paneEl).appendChild(tools);
+    els[slot].tools.appendChild(tools);
     toolsEls[slot] = tools;
 
     const input = $('input[type="file"]', tools);
@@ -1104,10 +1920,12 @@
 
     // One delegated handler per pane: head tools, head "Add image", and the
     // empty-state buttons. Empty-state buttons in overlay mode fill whichever
-    // slot is empty; everything else acts on this pane's own slot.
+    // slot is empty; everything else acts on the slot that owns the control
+    // (`data-owner`: in Overlay the Reference's controls live in the Drawing pane).
     paneEl.addEventListener('click', (e) => {
       const toggle = e.target.closest('.tools-toggle');
       if (toggle) {
+        if (state.dotFlow && state.dotFlow.step !== 'review') return; // the tray stays shut while the coach is asking for dots
         setTrayOpen(slot, !paneEl.classList.contains('tools-open'));
         return;
       }
@@ -1116,22 +1934,30 @@
         setHidden(chip.dataset.target, false);
         return;
       }
+      const owner = e.target.closest('[data-owner]');
+      const own = owner ? owner.dataset.owner : slot;
+      const tab = e.target.closest('.layer-tab');
+      if (tab) {
+        if (inSteps()) return; // the step decides which image is selected
+        selectTab(own);
+        return;
+      }
       const step = e.target.closest('[data-shelf]');
       if (step) {
         if (step.disabled) return;
-        if (step.dataset.shelf === 'prev') stepPhoto(slot, -1);
-        else if (step.dataset.shelf === 'next') stepPhoto(slot, 1);
-        else if (shelfUI.open === slot) closeStrip(true);
-        else openStrip(slot);
+        if (step.dataset.shelf === 'prev') stepPhoto(own, -1);
+        else if (step.dataset.shelf === 'next') stepPhoto(own, 1);
+        else if (shelfUI.open === own) closeStrip(true);
+        else openStrip(own);
         return;
       }
       const item = e.target.closest('.shelf-item[data-id]');
       if (item) {
         if (shelfUI.remove) {
           const id = item.dataset.id;
-          if (confirm(`Remove this photo from the ${LABELS[slot]} shelf? This cannot be undone.`)) removePhoto(slot, id);
+          if (confirm(`Remove this photo from the ${LABELS[own]} shelf? This cannot be undone.`)) removePhoto(own, id);
         } else {
-          switchPhoto(slot, item.dataset.id);
+          switchPhoto(own, item.dataset.id);
           closeStrip(true);
         }
         return;
@@ -1140,21 +1966,60 @@
       if (!btn || btn.disabled) return;
       if (btn.closest('.shelf')) closeStrip();
       const action = btn.dataset.action;
-      const target = btn.closest('.dropzone') ? dropTarget(slot) : slot;
+      const target = btn.closest('.dropzone') ? dropTarget(slot) : own;
       imageAction(target, action);
       // Actions that need the image itself next: get the tray out of the way.
-      if (['clear', 'dots', 'align', 'auto'].includes(action)) setTrayOpen(slot, false);
+      if (['clear', 'lineup', 'auto'].includes(action)) setTrayOpen(slot, false);
     });
   }
 
+  /** A layer tab was pressed: it becomes the selected image. In Overlay an empty layer can be selected too (to add a photo). */
+  function selectTab(slot) {
+    const overlay = state.layout === 'overlay';
+    if (!overlay && !layers[slot].hasImage) return;
+    setActive(slot);
+    if (overlay && !layers[slot].hasImage && COMPACT.matches) setTrayOpen('drawing', true); // File / Camera / Paste are in the tray
+  }
+
+  /** Layout in which Overlay's tools live in a tray (phones, landscape phones) rather than in the head. */
+  const COMPACT = matchMedia('(max-width: 720px), (min-width: 721px) and (max-height: 599px)');
+
   function setTrayOpen(slot, open) {
     paneEls[slot].classList.toggle('tools-open', open);
-    $('.tools-toggle', paneEls[slot]).setAttribute('aria-expanded', String(open));
+    els[slot].toggle.setAttribute('aria-expanded', String(open));
+  }
+
+  // ---------------------------------------------------------------- Overlay: one sheet
+
+  /**
+   * In Overlay the Reference pane is not shown: its head controls (tab, eye, stepper), its tool row and
+   * its thumbnail strip are moved into the Drawing pane's head, so one head carries both layer tabs and
+   * only the selected layer's tools. Leaving Overlay puts every element back where the markup had it.
+   * Idempotent; driven from syncUI.
+   */
+  let docked = false;
+  const hostPane = (slot) => (docked ? paneEls.drawing : paneEls[slot]); // the pane element that holds a slot's head controls
+  function dockReference(on) {
+    if (docked === on) return;
+    docked = on;
+    const d = els.drawing, r = els.reference;
+    const refHead = $('.pane-head', r.pane);
+    if (on) {
+      d.ctl.after(r.ctl);
+      d.tools.after(r.tools);
+      d.strip.after(r.strip);
+      $('.pane-body', d.pane).appendChild(ui.status); // "Aligning…" is a chip on the canvas, so the head never wraps
+    } else {
+      refHead.prepend(r.ctl);
+      refHead.append(r.tools);
+      r.pane.insertBefore(r.strip, $('.pane-body', r.pane));
+      d.ctl.insertBefore(ui.status, d.headAdd);
+    }
   }
 
   // ---------------------------------------------------------------- shelf strip
 
-  const stripEl = (slot) => $('.shelf', paneEls[slot]);
+  const stripEl = (slot) => els[slot].strip;
 
   function openStrip(slot, { remove = false } = {}) {
     if (shelfUI.open && shelfUI.open !== slot) closeStrip();
@@ -1163,10 +2028,10 @@
     shelfUI.remove = remove;
     shelfUI.key = '';
     const strip = stripEl(slot);
-    // Under the head (its height varies when it wraps); in Overlay the Reference head sits at the bottom, so CSS opens it upward.
-    strip.style.top = state.layout === 'overlay' && slot === 'reference' ? '' : `${$('.pane-head', paneEls[slot]).offsetHeight}px`;
+    // Under the head (its height varies when it wraps); in Overlay both strips open under the single Drawing head.
+    strip.style.top = `${$('.pane-head', hostPane(slot)).offsetHeight}px`;
     strip.hidden = false;
-    $('.shelf-count', paneEls[slot]).setAttribute('aria-expanded', 'true');
+    els[slot].count.setAttribute('aria-expanded', 'true');
     renderStrip(slot);
     const selected = $('.shelf-item[aria-selected="true"]', strip) || $('.shelf-item[data-id]', strip);
     if (selected) {
@@ -1181,7 +2046,7 @@
     shelfUI.open = null;
     shelfUI.remove = false;
     stripEl(slot).hidden = true;
-    const count = $('.shelf-count', paneEls[slot]);
+    const count = els[slot].count;
     count.setAttribute('aria-expanded', 'false');
     if (restoreFocus && !count.closest('[hidden]')) count.focus({ preventScroll: true });
   }
@@ -1265,6 +2130,7 @@
   // ---------------------------------------------------------------- global controls
 
   function setLayout(layout) {
+    if (alignKind === 'fit') cancelMatch(); // a pending Fit all match belongs to the layout it was started in
     state.layout = layout;
     closeStrip(); // its position depends on the layout
     // Overlay never shows nothing: if both images were hidden, bring the other one back.
@@ -1378,13 +2244,16 @@
   }
 
   $$('input[name="layout"]').forEach((r) => r.addEventListener('change', () => setLayout(r.value)));
-  $$('input[name="move"]').forEach((r) => r.addEventListener('change', () => setActive(r.value)));
   $$('input[name="compare"]').forEach((r) => r.addEventListener('change', () => setCompareMode(r.value)));
 
   ui.link.addEventListener('click', () => {
     state.linked = !state.linked;
     syncUI();
     scheduleSave();
+    if (!state.linked && state.layout === 'overlay' && !state.tipUnlink) {
+      state.tipUnlink = true;
+      toast(`Link is off: drags now move only the selected image (${LABELS[state.active]}). Tap a name above the image to pick the other.`);
+    }
   });
   ui.grid.addEventListener('click', () => {
     state.grid = !state.grid;
@@ -1396,7 +2265,7 @@
     syncUI();
     requestRender();
   });
-  $('#btn-fit').addEventListener('click', fitPair);
+  $('#btn-fit').addEventListener('click', fitAll);
   $('#btn-export').addEventListener('click', exportPNG);
   $('#btn-clear-saved').addEventListener('click', clearSaved);
   ui.swap.addEventListener('click', () => {
@@ -1423,14 +2292,30 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (isEditable(e.target) || document.querySelector('dialog[open]')) return;
 
+    const flow = state.dotFlow;
+    if (flow && (e.key === 'Enter' || e.key === ' ')) {
+      // Enter / Space without a focused button: Start (intro), Done (review), or drop the step's dot at the centre of the image
+      const t = e.target;
+      const onButton = t instanceof HTMLElement && t.closest('button, select, [role="slider"]') && !t.matches('.dot');
+      if (!onButton) {
+        e.preventDefault();
+        if (e.key === 'Enter' && flow.step === 'intro') flowStart();
+        else if (e.key === 'Enter' && flow.step === 'review') flowDone();
+        else if (inSteps() && !e.repeat) flowTap(state.layout === 'overlay' ? 'drawing' : stepSlot(flow.step), 0, 0, true);
+        return;
+      }
+    }
+
     const active = state.active;
     const targets = state.linked ? targetLayers(SLOTS) : targetLayers([active]);
     const step = e.shiftKey ? 10 : 1;
     const nudge = (dx, dy) => {
+      noteManualMove(targets);
       targets.forEach((l) => l.panBy(dx, dy));
       requestRender();
     };
     const zoom = (f) => {
+      noteManualMove(targets);
       targets.forEach((l) => l.zoomAt(f));
       requestRender();
     };
@@ -1443,21 +2328,22 @@
       case 'l': case 'L': ui.link.click(); break;
       case 'g': case 'G': ui.grid.click(); break;
       case 'v': case 'V': ui.gray.click(); break;
-      case 'f': case 'F': fitPair(); break;
+      case 'f': case 'F': if (e.shiftKey) plainFit(); else fitAll(); break;
       case 'e': case 'E': exportPNG(); break;
-      case 'a': case 'A': setActive(other(active)); break;
+      case 'a': case 'A': if (!inSteps()) setActive(other(active)); break;
       case 'm': imageAction(active, 'flipH'); break;
       case 'M': imageAction(active, 'flipV'); break;
       case 'r': imageAction(active, 'rotate'); break;
       case 'R': imageAction(active, 'rotateCCW'); break;
       case 'b': case 'B': imageAction(active, 'gray'); break;
       case 'c': case 'C': imageAction(active, 'contrast'); break;
-      case 'd': case 'D': imageAction(active, 'dots'); break;
+      case 'd': case 'D': toggleFlow(); break;
+      case 'Backspace': if (flow && flow.step !== 'intro') flowBack(); else handled = false; break;
       case 'p': case 'P': imageAction('drawing', 'prev'); break;
-      case 'z': case 'Z': if (undoAlign) undoAlign(); break;
+      case 'z': case 'Z': if (flow) flowUndo(); else if (undoAlign) undoAlign(); break;
       case '0': imageAction(active, 'reset'); break;
       case 'o': case 'O': if (state.layout === 'overlay' && !ui.swap.hidden) ui.swap.click(); break;
-      case 'h': case 'H': imageAction(active, 'hide'); break;
+      case 'h': case 'H': if (!inSteps()) imageAction(active, 'hide'); break;
       case 't': if (state.layout === 'overlay') stepCompareMode(1); break;
       case 'T': if (state.layout === 'overlay') stepCompareMode(-1); break;
       case '[': nudgeContextual(-0.1); break;
@@ -1465,7 +2351,7 @@
       case ',': stepPhoto(active, -1); break;
       case '.': stepPhoto(active, 1); break;
       case '?': helpDialog.showModal(); break;
-      case 'Escape': setMoreOpen(false); SLOTS.forEach((s) => setTrayOpen(s, false)); closeStrip(true); break;
+      case 'Escape': cancelFlow(); setMoreOpen(false); SLOTS.forEach((s) => setTrayOpen(s, false)); closeStrip(true); break;
       case 'ArrowLeft': nudge(-step, 0); break;
       case 'ArrowRight': nudge(step, 0); break;
       case 'ArrowUp': nudge(0, -step); break;
@@ -1479,11 +2365,22 @@
 
   // ---------------------------------------------------------------- UI sync
 
+  /** The slot a control belongs to: its `data-owner`, else the pane it sits in. */
+  function ownerSlot(el) {
+    const o = el.closest('[data-owner]');
+    return o ? o.dataset.owner : el.closest('.pane').dataset.slot;
+  }
+
   function setPressed(btn, on) {
     if (btn) btn.setAttribute('aria-pressed', String(on));
   }
 
   function syncUI() {
+    if (state.dotFlow && !bothLoaded()) {
+      state.dotFlow = null;
+      loupe.hidden = true;
+      toast('Line-up closed: it needs both a drawing and a reference.');
+    }
     document.body.dataset.layout = state.layout;
     $(`input[name="layout"][value="${state.layout}"]`).checked = true;
     setPressed(ui.link, state.linked);
@@ -1491,13 +2388,14 @@
     setPressed(ui.gray, state.grayAll);
 
     const overlay = state.layout === 'overlay';
+    dockReference(overlay);
     ui.overlayBar.hidden = !overlay;
     const mode = state.compareMode;
     document.body.dataset.compare = overlay ? mode : '';
     $(`input[name="compare"][value="${mode}"]`).checked = true;
     const top = state.overlayTop;
-    ui.swapLabel.textContent =
-      mode === 'wipe' ? `${LABELS[top]} left, ${LABELS[other(top)]} right` : `${LABELS[top]} over ${LABELS[other(top)]}`;
+    ui.swapLabel.textContent = mode === 'wipe' ? `${LABELS[top]} on the left` : `${LABELS[top]} on top`;
+    ui.swap.dataset.tip = mode === 'wipe' ? 'Swap which image is on the left of the curtain' : 'Swap which image is on top';
     ui.swap.hidden = !(mode === 'blend' || mode === 'wipe');
     // One contextual slider: Opacity (Blend) or Detail (Outline); Tint has none, Wipe uses the on-canvas handle.
     ui.rangeWrap.hidden = !(mode === 'blend' || mode === 'outline');
@@ -1506,8 +2404,6 @@
     ui.opacity.setAttribute('aria-label', mode === 'outline' ? 'Outline detail' : 'Top layer opacity');
     ui.opacity.value = Math.round(rangeValue * 100);
     ui.opacityOut.value = `${Math.round(rangeValue * 100)}%`;
-    $(`input[name="move"][value="${state.active}"]`).checked = true;
-    ui.moveHint.hidden = !state.linked;
     syncWipe();
 
     // Camera buttons: disabled with an explanation on devices without one
@@ -1521,18 +2417,38 @@
         ? 'No camera detected on this device'
         : camOn
           ? 'Camera on standby, turns off after 2 minutes'
-          : btn.closest('.pane[data-slot="drawing"].has-image')
+          : ownerSlot(btn) === 'drawing' && layers.drawing.hasImage
             ? 'Retake: photograph the drawing again (keeps alignment)'
             : 'Take a photo';
     }
     syncShelf();
 
     const both = SLOTS.every((s) => layers[s].hasImage);
+    const anyImage = SLOTS.some((s) => layers[s].hasImage);
+    els.drawing.toggle.setAttribute('aria-controls', overlay ? `tools-${state.active}` : 'tools-drawing');
     for (const slot of SLOTS) {
       const layer = layers[slot];
       const paneEl = paneEls[slot];
+      const e = els[slot];
       const tools = toolsEls[slot];
       const tool = (action) => $(`[data-action="${action}"]`, tools);
+
+      // Per-image controls carry their own state classes: in Overlay they are not inside "their" pane.
+      const current = state.active === slot;
+      for (const el of [e.ctl, e.tools, e.strip]) {
+        el.classList.toggle('has-image', layer.hasImage);
+        el.classList.toggle('is-current', current);
+        el.classList.toggle('is-hidden', layer.hasImage && layer.hidden);
+      }
+      e.tab.setAttribute('aria-pressed', String(current));
+      const emptyTab = overlay && !layer.hasImage;
+      $('span', e.tab).textContent = emptyTab ? `${LABELS[slot]} +` : LABELS[slot];
+      e.tab.dataset.tip = emptyTab
+        ? `No ${LABELS[slot].toLowerCase()} yet. Select it, then add a photo`
+        : `Select the ${LABELS[slot].toLowerCase()}: it is the image that moves when Link is off, and the one double-tap hides`;
+      e.eye.hidden = !layer.hasImage;
+      setPressed(e.eye, layer.hidden);
+      paneEl.classList.toggle('has-any', anyImage);
 
       // The empty state shows only when nothing is drawn in this pane's body.
       const dropzoneHidden = layersInPane(slot).some((l) => l.hasImage);
@@ -1554,42 +2470,44 @@
         chip.dataset.target = chipTarget;
         chip.textContent = `${LABELS[chipTarget]} hidden · ${IS_TOUCH ? 'double-tap' : 'double-click or H'} to show`;
       }
-      paneEl.classList.toggle('placing-dots', !!dotLayerIn(slot));
-      if (!layer.hasImage) setTrayOpen(slot, false);
+      // The tray belongs to the pane that holds it: in Overlay that is the Drawing pane, whichever layer is selected.
+      if (overlay ? slot === 'reference' || !anyImage : !layer.hasImage) setTrayOpen(slot, false);
 
       $$('.needs-image .tool', tools).forEach((b) => (b.disabled = !layer.hasImage));
-      for (const [action, on] of [['flipH', layer.flipH], ['flipV', layer.flipV], ['gray', layer.gray], ['contrast', layer.contrast], ['dots', layer.dotsOn], ['hide', layer.hidden]]) {
+      for (const [action, on] of [['flipH', layer.flipH], ['flipV', layer.flipV], ['gray', layer.gray], ['contrast', layer.contrast], ['lineup', !!state.dotFlow], ['hide', layer.hidden]]) {
         setPressed(tool(action), on);
       }
+      // Line up: needs both images; a small vermilion corner dot says the pair already has dots
+      const lu = tool('lineup');
+      lu.disabled = !both;
+      lu.classList.toggle('has-dots', both && dotPairs().length > 0);
+      lu.dataset.tip = both && dotPairs().length ? 'Adjust the dots that line the drawing up' : 'Line the drawing up with the reference by marking the same two spots on both';
     }
 
     // Drawing-only alignment tools.
     const t = (action) => $(`[data-action="${action}"]`, toolsEls.drawing);
-    const pairs = dotPairs().length;
-    t('align').disabled = !both || pairs === 0;
-    t('align').title = pairs === 2 ? 'Align on both dots: position, size and rotation' : pairs === 1 ? 'Centre on the dot (add a second for size and rotation)' : 'Place matching dots in both images first';
     t('auto').disabled = !both;
     t('prev').disabled = !prevLayer.hasImage && !shelf.previous('drawing'); // the ghost is the shelf entry before the active one
     setPressed(t('prev'), showingPrev());
     t('file').title = layers.drawing.hasImage ? 'Add a photo from a file (a retake: keeps the alignment)' : 'Add from file';
+    syncFlow();
   }
 
   /** Stepper (n / total, chevrons) in each pane head; the open strip follows the shelf. */
   function syncShelf() {
     for (const slot of SLOTS) {
-      const paneEl = paneEls[slot];
       const n = shelf.count(slot);
       const idx = shelf.ids[slot].indexOf(shelf.active(slot));
-      const step = $('.shelf-step', paneEl);
+      const step = els[slot].step;
       step.hidden = n < 2;
-      const count = $('.shelf-count', paneEl);
+      const count = els[slot].count;
       const unsaved = shelf.unsavedIds(slot).length;
       count.textContent = `${idx + 1} / ${n}`;
       count.classList.toggle('has-unsaved', unsaved > 0);
       count.title = unsaved ? `Show all photos (${unsaved} not saved)` : 'Show all photos';
       count.setAttribute('aria-label', `${LABELS[slot]} photo ${idx + 1} of ${n}. Show all photos`);
-      $('[data-shelf="prev"]', paneEl).disabled = idx <= 0;
-      $('[data-shelf="next"]', paneEl).disabled = idx < 0 || idx >= n - 1;
+      els[slot].prev.disabled = idx <= 0;
+      els[slot].next.disabled = idx < 0 || idx >= n - 1;
       if (shelfUI.open === slot) {
         if (!n || (n < 2 && !shelfUI.remove)) closeStrip();
         else renderStrip(slot);
@@ -1599,7 +2517,7 @@
 
   /** Wipe handle and tags: only when both images are visible in Overlay + Wipe. */
   function syncWipe() {
-    const show = state.layout === 'overlay' && state.compareMode === 'wipe' && SLOTS.every((s) => layers[s].hasImage && !layers[s].hidden);
+    const show = state.layout === 'overlay' && state.compareMode === 'wipe' && !soloSlot() && SLOTS.every((s) => layers[s].hasImage && !layers[s].hidden);
     ui.wipeHandle.hidden = !show;
     ui.wipeTags.left.hidden = ui.wipeTags.right.hidden = !show;
     ui.wipeHandle.style.setProperty('--wipe', String(state.wipe));
@@ -1637,8 +2555,8 @@
 
   // Small surface for debugging and tests from the console.
   window.DrawingCompare.app = {
-    state, layers, prevLayer, panes, shelf, store, camera, loadInto, runAutoAlign, alignByDots, fitPair, render, setHidden, setCompareMode,
-    switchPhoto, stepPhoto, removePhoto, flushSave, restored, syncGhost,
+    state, layers, prevLayer, panes, shelf, store, camera, loadInto, runAutoAlign, alignByDots, fitAll, plainFit, fitOne, render, setHidden, setCompareMode,
+    openFlow, cancelFlow, dotPairs, switchPhoto, stepPhoto, removePhoto, flushSave, restored, syncGhost,
   };
 
   // ---------------------------------------------------------------- start

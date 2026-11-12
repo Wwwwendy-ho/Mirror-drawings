@@ -21,8 +21,8 @@
   const MAX_SCALE = 64;
   const VIEW_KEYS = [
     'flipH', 'flipV', 'rotation', 'gray', 'contrast',
-    'x', 'y', 'scale', 'angle', 'moved', 'frame', 'aligned', 'dots', 'dotsOn',
-  ];
+    'x', 'y', 'scale', 'angle', 'moved', 'frame', 'aligned', 'alignSource', 'tuned', 'dots',
+  ]; // (older saved views also carry `dotsOn`; dots are only shown while the Line up flow is open, so it is ignored)
 
   // Canvas 2D `filter` is missing in some browsers (older Safari); fall back to
   // filtering pixels ourselves when it is not available.
@@ -50,9 +50,10 @@
       this.angle = 0; // radians; non-zero only after an alignment
       this.moved = false; // user has panned/zoomed away from the auto fit
       this.aligned = false; // placed relative to the other image (dots / auto / retake)
+      this.alignSource = null; // how it was aligned: null | 'dots' | 'auto'
+      this.tuned = false; // aligned, then moved by hand on its own: Fit all keeps such a placement
       this.frame = null; // { w, h } pane size the transform is relative to
       this.dots = [null, null]; // alignment dots, {x, y} in centred source pixels
-      this.dotsOn = false; // dots visible and placeable
       this.hidden = false; // skipped when rendering (runtime only, never persisted)
       this._filtered = null;
       this._filteredKey = '';
@@ -102,7 +103,6 @@
       this.blob = null;
       this._filtered = null;
       this.dots = [null, null];
-      this.dotsOn = false;
       this.hidden = false;
       this.reset();
     }
@@ -111,6 +111,8 @@
     reset() {
       this.moved = false;
       this.aligned = false;
+      this.alignSource = null;
+      this.tuned = false;
       this.angle = 0;
       this.frame = null;
     }
@@ -127,6 +129,11 @@
     applyView(view) {
       if (!view || typeof view !== 'object') return;
       for (const k of VIEW_KEYS) if (k in view) this[k] = view[k];
+      // Views saved before these existed (or hand-edited ones) load as "not aligned by anything".
+      if (!('alignSource' in view)) this.alignSource = null;
+      if (!('tuned' in view)) this.tuned = false;
+      if (this.alignSource !== 'dots' && this.alignSource !== 'auto') this.alignSource = null;
+      this.tuned = this.tuned === true && this.aligned === true;
       this.rotation = ((Math.round(this.rotation / 90) * 90) % 360 + 360) % 360;
       this.angle = Number.isFinite(this.angle) ? this.angle : 0;
       const dots = Array.isArray(view.dots) ? view.dots : [];

@@ -3,12 +3,12 @@
    Native title attributes are adopted into data-tip so nothing shows twice. No dependency on app.js. */
 (function () {
   'use strict';
-  var SEL = 'button, label.btn, .segmented label';
+  var SEL = 'button, label.btn, .segmented label, .layer-tab';
   var EXC = '.dot, .hidden-chip, .toast-action, [data-close], [data-camera="cancel"], [data-choice="cancel"], [data-no-tip]';
-  var BOX = '.tools, .tool-group, .shelf-step, .head-add, .actions, .dialog-actions';
+  var BOX = '.tools, .tool-group, .shelf-step, .head-add, .layer-ctl, .dot-coach, .actions, .dialog-actions';
   var OFF = [
-    ['[data-action="align"], [data-action="camera"]', null],
-    ['[data-action="auto"]', 'Needs both a drawing and a reference'],
+    ['[data-action="camera"]', null],
+    ['[data-action="auto"], [data-action="lineup"]', 'Needs both a drawing and a reference'],
     ['[data-action="prev"]', 'No earlier photo of this drawing yet'],
     ['.needs-image .tool', 'Add a photo to this pane first'],
     ['[data-shelf="prev"]', 'This is the oldest photo'],
