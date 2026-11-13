@@ -13,8 +13,20 @@
   --wobble-a: 255px 14px 225px 14px / 14px 225px 14px 255px;
   --wobble-b: 14px 225px 14px 255px / 255px 14px 225px 14px;
 
-  --band-b: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--paper-2);
-  --band-t: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--paper-2);
+  /* printed graph paper (teal, CSS only) under hand-ruled transfer squares; one transfer square = 8 printed cells at every width */
+  --cell: 12px;
+  --tile: calc(var(--cell) * 32);
+  --grid-teal: 46, 143, 138;
+  --graph: linear-gradient(to right, rgba(var(--grid-teal), .16) 1px, transparent 0) 0 0 / var(--cell) var(--cell),
+           linear-gradient(to bottom, rgba(var(--grid-teal), .16) 1px, transparent 0) 0 0 / var(--cell) var(--cell);
+  --graph-q: linear-gradient(to right, rgba(var(--grid-teal), .09) 1px, transparent 0) 0 0 / var(--cell) var(--cell),
+             linear-gradient(to bottom, rgba(var(--grid-teal), .09) 1px, transparent 0) 0 0 / var(--cell) var(--cell);
+  --sheet: var(--u-sheet) 0 0 / var(--tile) var(--tile), var(--graph);
+  --wash: linear-gradient(rgba(227, 220, 205, .58), rgba(227, 220, 205, .58));
+  --smudge: radial-gradient(ellipse 220px 300px at 0 100%, rgba(42, 37, 33, .09), transparent 70%) no-repeat,
+            radial-gradient(ellipse 200px 120px at 100% 0, rgba(42, 37, 33, .05), transparent 70%) no-repeat;
+  --band-b: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--graph-q), var(--paper-2);
+  --band-t: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--graph-q), var(--paper-2);
 
   --d-underline: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><g fill='none' stroke='%23c2492a' stroke-width='1.6' stroke-linecap='round'><path d='M2 4.6C22 2.3 44 5.3 63 3.6 82 2 101 4.3 118 2.9'/><path d='M9 6.3C36 5 71 6.6 112 5.2' opacity='.45'/></g></svg>");
   --d-underline-s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M2 4.6C22 2.3 44 5.3 63 3.6 82 2 101 4.3 118 2.9' stroke-width='2.2'/><path d='M9 6.3C36 5 71 6.6 112 5.2' stroke-width='1.6' opacity='.5'/></g></svg>");
@@ -33,29 +45,38 @@
   --d-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2.6 8.7c1.3 1.2 2.3 2.5 3.1 3.9C7.8 8.6 10.5 5.3 14 2.6' fill='none' stroke='%23e0a184' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 
   /* underdrawing tiles (chalk) */
-  --u-sheet: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M0 .9C50 .3 110 1.5 192 .9M0 48.8C60 49.4 130 48.2 192 48.8M0 96.6C40 96 120 97.2 192 96.6M0 144.9C70 145.5 140 144.3 192 144.9M.9 0C.3 50 1.5 110 .9 192M48.8 0C49.4 60 48.2 130 48.8 192M96.6 0C96 40 97.2 120 96.6 192M144.9 0C145.5 70 144.3 140 144.9 192' stroke-opacity='.38'/><path d='M49 144.6 144.6 49' stroke-opacity='.28' stroke-dasharray='6 6'/><path d='M62 97C62 76 78 61 97 61' stroke-opacity='.32'/></g></svg>");
-  --u-head: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='56'><g fill='none' stroke='%23a5502f' stroke-opacity='.26' stroke-width='1.2' stroke-linecap='round'><path d='M-6 30C-4 4 40-8 84-6c46 2 78 16 76 36-2 18-38 30-80 30S-8 50-6 30'/><path d='M0 28.4C130 27.3 320 29.2 520 27.6' stroke-dasharray='9 7'/><path d='M78.4 0C77.8 20 79 40 78.3 56'/><path d='M150 56C215 14 330-4 520 22'/><path d='M236 21c4.5 4 4.6 10.5.2 14.8M318 21c4.5 4 4.6 10.5.2 14.8M400 21c4.5 4 4.6 10.5.2 14.8'/><path d='M452 10v14M445 17h14'/></g></svg>");
-  --u-cyl: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='115' height='40'><g fill='none' stroke='%23a5502f' stroke-opacity='.3' stroke-width='1.2' stroke-linecap='round'><path d='M1 12.4c.3-6.2 25-11.4 56.4-11.2 31 .2 55.4 5.2 55.6 11.4-.2 6-25 11-56 11.2-31 0-56-5-56-11.4M1.6 12.8l.2 17M113 12.4l-.1 17.2M1.8 29.6c8 5 28 9 55.4 9s47-4 56-9'/></g></svg>");
+  /* transfer squares, hand-ruled over the printed grid: 4 x 4 squares per tile; every line enters and leaves the tile at the same offset */
+  --u-sheet: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M0 .9C90 .2 200 1.6 384 .9M0 96.7C120 97.4 260 96 384 96.7M0 192.5C80 191.8 240 193.2 384 192.5M0 288.8C140 289.5 280 288.1 384 288.8M.9 0C.2 90 1.6 200 .9 384M96.7 0C97.4 120 96 260 96.7 384M192.5 0C191.8 80 193.2 240 192.5 384M288.8 0C289.5 140 288.1 280 288.8 384' stroke-opacity='.34'/><path d='M0 98.3C150 97.6 250 98.9 384 98.3M194.1 0C193.6 130 194.7 250 194.1 384' stroke-opacity='.16' stroke-width='.8'/><path d='M97 288.4 288.4 97' stroke-opacity='.22' stroke-dasharray='7 6'/><path d='M110 192.4C110 146 147 110 192.4 110' stroke-opacity='.26'/><path d='M144.6 93v7.4M240.5 285v7.6M93 240.4h7.4M285 48.4h7.6M45 1.2l3.4 3.2M48.6 1 45.2 4.6' stroke-opacity='.34'/></g></svg>");
+  /* twin-wire binding down the left edge (graphite: metal, not chalk); 28px pitch */
+  --u-bind: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='28'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M0 9.4C5 4.6 14 4.4 16 9.2c1.2 3.4-1.2 5.8-4.6 5.6M0 12.6C5 7.8 14 7.6 16 12.4c1.2 3.4-1.2 5.8-4.6 5.6' stroke-opacity='.3' stroke-width='1.1'/><path d='M9 14.6c0-1.2 4.8-1.2 4.8 0v3.8c0 1.2-4.8 1.2-4.8 0z' stroke-opacity='.18' stroke-width='.9'/></g></svg>");
+  /* value-gradient hatching for the bottom-left corner: dense and crossed at the foot, thinning to nothing 200px up */
+  --f-hatchcol: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='210'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M2 208l31-21m-31 16 30-20m-30 15 32-22m-31 16 30-20m-31 15 31-21m-30 16 29-20m-30 15 32-21m-31 16 30-21m-30 16 31-20m-31 15 29-20' stroke-opacity='.46'/><path d='M4 190l24 16M3 180l30 20M6 172l26 18' stroke-opacity='.32' stroke-width='.8'/><path d='M3 156l28-19m-28 11 30-21m-29 12 27-18m-28 9 29-20m-28 11 26-18' stroke-opacity='.32'/><path d='M4 112l24-16m-24 4 26-18m-25 3 22-15m-21 0 18-12' stroke-opacity='.15' stroke-width='.9'/></g></svg>");
   --d-ruler: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='8'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M0 6.6C20 6.1 50 7.1 80 6.6' stroke-width='1.2' opacity='.62'/><path d='M4.2 6.4V1M12 6.5V3.8M20.1 6.6V3.6M27.9 6.7V3.9M36 6.8V3.7M44.1 6.8V1.2M52 6.8V3.8M59.9 6.7V3.6M68.1 6.6V3.9M76 6.5V3.7' stroke-width='.9' opacity='.5'/></g></svg>");
-  --d-ruler-v: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='80'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M1.4 0C1.9 20 .9 50 1.4 80' stroke-width='1.2' opacity='.62'/><path d='M1.6 4.2H7M1.5 12H4.2M1.4 20.1H4.4M1.3 27.9H4.1M1.2 36H4.3M1.2 44.1H6.8M1.3 52H4.2M1.4 59.9H4.4M1.5 68.1H4.1M1.6 76H4.3' stroke-width='.9' opacity='.5'/></g></svg>");
   --u-loops: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='36'><path d='M0 30c8-26 34-26 30-4-3 13-13 13-10 4 8-26 34-25 30-4-3 12-13 13-10 4 8-27 34-26 30-4-3 13-13 12-10 4' fill='none' stroke='%23a5502f' stroke-opacity='.26' stroke-width='1.1' stroke-linecap='round'/></svg>");
   --u-sphere: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><g fill='none' stroke='%23a5502f' stroke-opacity='.2' stroke-width='1.2' stroke-linecap='round'><path d='M60 8c29-.4 52.5 23 52 52.5-.5 28.5-23.5 51.5-52.5 51.5C30.5 112 7.5 88.5 8 59.5 8.5 31 31.5 8.2 60.5 8.3'/><path d='M8 60c8 13 30 20 52 20s44-7 52-20M8 60c8-13 30-20 52-20s44 7 52 20M60 8C44 20 36 38 36 60s8 40 24 52'/><path d='M60 2v116M2 60h116' stroke-dasharray='5 5'/></g></svg>");
-  --u-top: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='56'><g fill='none' stroke='%23a5502f' stroke-opacity='.2' stroke-width='1.2' stroke-linecap='round'><path d='M0 27.8C120 28.6 280 27 420 27.8' stroke-dasharray='9 7'/><path d='M133 26.4C132.8 16.8 140.4 9.2 149.8 9.1 159.2 9 167 16.6 167.1 26 167.2 35.4 159.6 43 150.2 43.1 140.8 43.2 133.2 35.8 133 25.8M133 26c6 5 28 5 34 0M150 5v42'/><path d='M222 40l6-10 1 9 6-11 1 10 6-11 1 9 5-9'/><path d='M322 35v13M322 35l-26-.6v11.9L322 48l22-5v-9.8L322 35M296 34.4l26.8-1.6 21.2.4'/><path d='M296 34.4 20 27.8M296 46.3 20 27.8M344 33.2l66-5.4M344 43l66-15.2' stroke-opacity='.13'/></g></svg>");
-  --u-hv: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='5' height='64'><path d='M.8 4.6l3.4-2.4M.8 8l3.4-2.4M.8 11.4l3.4-2.4M.8 14.8l3.4-2.4M.8 40l3.4-2.4M.8 43.4l3.4-2.4M.8 46.8l3.4-2.4' fill='none' stroke='%23a5502f' stroke-opacity='.38' stroke-linecap='round'/></svg>");
   --d-plumb: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 200' preserveAspectRatio='none'><path d='M4.5 0C4.1 60 5 130 4.5 200' fill='none' stroke='%23a5502f' stroke-width='1.1' stroke-opacity='.85'/></svg>");
   --d-bob: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 18'><path d='M4.5 0v3.4' stroke='%23a5502f' stroke-width='1.1' fill='none'/><path d='M4.5 3.2C1.7 7 1.4 12 4.4 17.2 7.6 12 7.4 7 4.5 3.2z' fill='%23a5502f' fill-opacity='.85'/></svg>");
 }
 
+@media (max-width: 720px) { :root { --cell: 10px; } }
+
 /* ---------- Page and header ---------- */
 
-body { background: var(--grain), var(--u-sheet) 0 0 / 192px 192px, var(--paper); }
+body { background: var(--grain), var(--smudge), var(--sheet), var(--paper); }
 .doodle { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; pointer-events: none; }
-/* underdrawing strokes inside symbols: bare classes (ancestor selectors do not reach into <use>); the grey mat sets nothing and stays on-grey */
+/* strokes inside symbols: bare classes (ancestor selectors do not reach into <use>) */
 .u, .ax { stroke: var(--u-ink, currentColor); stroke-width: 1.1; opacity: var(--u-op, .5); }
+.sc { stroke-width: .8; opacity: .55; }                                    /* construction, second pass */
+.sh { stroke-width: .8; opacity: .75; }                                    /* hatching */
+.sp { stroke-width: 1.9; }                                                 /* pressure accent */
+.sg { stroke: var(--g-ink, var(--graphite-2)); }                           /* graphite note; on the grey mat --g-ink is currentColor */
+.st { stroke-dasharray: 7 1.5 4 2.5 2 4; opacity: .6; }                    /* skipping tail */
+.fade { -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 45%, #000 50%, transparent 100%); mask-image: radial-gradient(ellipse 62% 64% at 50% 45%, #000 50%, transparent 100%); }
 :is(.brand-mark, .deskstrip, .margin-notes, .bar-art, .dialog-kit) { --u-ink: var(--sinopia); --u-op: .9; }
 
 .top { padding-bottom: 9px; border-bottom: 0;
-  background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--u-cyl) 143px 38px no-repeat, var(--u-head) 0 0 / 520px 56px no-repeat, var(--grain), var(--paper-2); }
+  /* the same sheet runs on through the header, under a paper veil, from the same origin as the body */
+  background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
 .brand { display: inline-flex; align-items: baseline; flex: 0 1 auto; min-width: 0; }
 .brand-mark { align-self: center; width: 26px; height: 20px; margin-right: 8px; color: var(--graphite-1); }
 .brand-name { position: relative; min-width: 0; padding-bottom: 5px; margin-bottom: -5px; overflow: hidden; text-overflow: ellipsis; }
@@ -135,7 +156,7 @@ body[data-layout="overlay"] .overlay-bar::after { content: ""; flex: 1; align-se
 /* ---------- Dialogs: loose notes with tape, a construction sphere under the text ---------- */
 
 .dialog { padding-top: 28px; border: 4px solid var(--rule-strong); border-image: var(--d-frame) 4 / 4px round; border-radius: 0;
-  background: var(--u-sphere) right -20px bottom -26px / 132px 132px no-repeat, var(--grain), var(--paper); box-shadow: 0 2px 0 rgba(42, 37, 33, .18); }
+  background: var(--u-sphere) right -20px bottom -26px / 132px 132px no-repeat, var(--grain), var(--graph-q), var(--paper); box-shadow: 0 2px 0 rgba(42, 37, 33, .18); }
 .dialog h2 { padding-bottom: 8px; background: var(--d-underline-s) left bottom / min(60%, 220px) 7px no-repeat; }
 .dialog h2:first-child::before { content: ""; position: absolute; top: 3px; left: 50%; margin-left: -29px; width: 58px; height: 17px; background: var(--d-tape) center / 100% 100% no-repeat; transform: rotate(-2deg); animation: rise var(--ease); pointer-events: none; }
 ul.plain { list-style: none; padding-left: 0; }
@@ -144,7 +165,7 @@ kbd { border-radius: var(--wobble-a); }
 .inline-mark { width: 24px; height: 14px; margin: 0 3px; vertical-align: -2px; color: var(--graphite-2); }
 .inline-mirror { width: 14px; height: 17px; margin: 0 3px; vertical-align: -4px; color: var(--graphite-2); }
 .inline-scale { width: 66px; height: 8.4px; margin-left: 6px; vertical-align: -1px; color: var(--graphite-1); }
-.help-pencil { width: 40px; height: 12px; margin-left: auto; transform: rotate(-8deg); color: var(--graphite-2); }
+.help-pencil { width: 40px; height: 12px; margin-left: 0; transform: rotate(-8deg); color: var(--graphite-2); }
 .dialog-kit { width: 63px; height: 13.5px; margin-right: auto; color: var(--graphite-2); }
 :is(#help-dialog, #shelf-dialog) .dialog-actions > :last-child { margin-left: 0; }
 
@@ -168,51 +189,93 @@ kbd { border-radius: var(--wobble-a); }
 
 /* ---------- Border sketches: top (header), gutters, desk strip, phone frieze. Chalk, behind or beside, never over an image ---------- */
 
-:is(.k, #d-mannequin, #d-ball) :is(path, circle) { vector-effect: non-scaling-stroke; }
-.margin-notes, .bar-art, .deskstrip .sk { stroke-width: 1.2; }
-.deskstrip, .margin-notes, .bar-art { display: none; pointer-events: none; }
+.k :is(path, circle) { vector-effect: non-scaling-stroke; }
+.bar-art .doodle { stroke-width: 1.2; }
+:is(.head-notes, .mast-notes, .strip-row, .margin-notes, .dz-notes) svg { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.deskstrip, .margin-notes, .bar-art, .head-notes, .mast-notes, .dz-notes svg { display: none; pointer-events: none; }
+/* wrap-and-clip rows: pieces that do not fit drop out whole, in DOM order. contain: size is mandatory (else the header grows) */
+.strip-row { display: flex; }
+:is(.head-notes, .mast-notes, .strip-row) { flex-wrap: wrap; align-content: flex-start; overflow: hidden; contain: size layout paint; color: var(--sinopia); }
+:is(.head-notes, .mast-notes, .strip-row) svg { flex: none; height: 100%; width: calc(var(--w) * 1px); transform: rotate(var(--r, 0deg)); }
+@supports not (contain: size) { .head-notes, .mast-notes { display: none !important; } }
 
 @media (min-width: 721px) {
-  .workspace { position: relative; padding-left: 20px; padding-right: 20px; }
-  .margin-notes { display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-    position: absolute; top: 34px; bottom: 34px; width: 14px; color: var(--sinopia); opacity: .5; }
-  .margin-notes.left { left: 3px; }
-  .margin-notes.right { right: 3px; }
-  .margin-notes svg { width: 100%; height: auto; }
-  .margin-notes svg:nth-child(odd) { transform: rotate(-3deg); }
-  .top { background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--u-top) 520px 0 no-repeat, var(--u-cyl) 143px 38px no-repeat, var(--u-head) 0 0 / 520px 56px no-repeat, var(--grain), var(--paper-2); }
+  .top { position: relative; }
+  /* zero-basis item beside the masthead: takes only free space; negative margins cancel the gap and keep it clear of the toolbar */
+  .head-notes { display: flex; flex: 1 1 0; min-width: 0; align-self: stretch; margin: -8px 0 -7px -16px; padding: 0 20px; justify-content: space-evenly; gap: 0 22px; opacity: .62; container-type: size; }
+  @container (max-width: 85px) { .head-notes svg { display: none; } }
+  .workspace { position: relative; padding-left: 20px; padding-right: 20px; background: var(--f-hatchcol) 0 100% / 30px 158px no-repeat; }
+  /* gutters: before .panes in the source so the panes cover what slides under them */
+  .margin-notes { display: flex; flex-direction: column; justify-content: space-between; position: absolute; top: 30px; bottom: 30px; overflow: hidden; color: var(--sinopia); opacity: .62; --ms: .8; }
+  .margin-notes svg { flex: none; width: calc(var(--w) * var(--ms) * 1px); height: calc(var(--w) * var(--ar) * var(--ms) * 1px); margin-left: calc(var(--x, 0) * var(--ms) * 1px); transform: rotate(var(--r, 0deg)); }
+  .margin-notes.left { left: 3px; width: 14px; align-items: center; }
+  .margin-notes.right { right: 0; width: 44px; }                     /* 20 visible + 24 under the pane */
+  .margin-notes svg:nth-child(5), .margin-notes.right svg:nth-child(3) { display: none; }
 }
-@media (min-width: 960px) { .top { background-position: left bottom, right 0 top 0, 143px 38px, 0 0, 0 0, 0 0; } }
 @media (min-width: 1024px) {
-  .workspace { padding-left: 34px; padding-right: 24px; background: var(--d-ruler-v) 9px 0 / 8px 80px repeat-y; }
-  .margin-notes.left { left: 19px; }
-  .margin-notes.right { width: 18px; }
+  .workspace { padding-left: 34px; padding-right: 24px; background: var(--u-bind) 0 6px / 22px 28px repeat-y, var(--f-hatchcol) 16px 100% / 40px 210px no-repeat; }
+  .margin-notes { --ms: .9; }
+  .margin-notes.left { left: 17px; width: 17px; }                    /* right of the binding */
+  .margin-notes.right { width: 50px; }                               /* 24 visible + 26 under */
+  .margin-notes.right svg:nth-child(3) { display: block; }
 }
+@media (min-width: 1024px) and (max-height: 599px) { .workspace { background: var(--u-bind) 0 6px / 22px 28px repeat-y, var(--f-hatchcol) 16px 100% / 30px 158px no-repeat; } }
 @media (min-width: 1280px) {
   .workspace { padding-left: 40px; padding-right: 36px; }
-  .margin-notes.left { width: 20px; }
-  .margin-notes.right { right: 4px; width: 28px; }
+  .margin-notes { --ms: 1; }
+  .margin-notes.left { width: 22px; }
+  .margin-notes.right { width: 62px; }                               /* 36 visible + 26 under */
+  .margin-notes svg:nth-child(5) { display: block; }
 }
-@media (min-width: 721px) and (max-height: 560px) { .margin-notes svg:nth-child(n+3) { display: none; } }
+@media (min-width: 721px) and (max-height: 719px) { .margin-notes.left svg:nth-child(n+6), .margin-notes.right svg:nth-child(n+7) { display: none; } }
+@media (min-width: 721px) and (max-height: 760px) { .margin-notes svg:nth-child(5) { display: none; } }
+@media (min-width: 721px) and (max-height: 660px) { .margin-notes svg:nth-child(3), .margin-notes.right svg:nth-child(3) { display: none; } }   /* .right twin: out-specifies the >= 1024 display:block */
+@media (min-width: 721px) and (max-height: 560px) { .margin-notes svg:nth-child(n+3), .margin-notes.right svg:nth-child(n+3) { display: none; } }
 @media (min-width: 721px) and (max-height: 420px) { .margin-notes svg:nth-child(n+2) { display: none; } }
-
 @media (min-width: 721px) and (min-height: 600px) {
   .workspace { padding-bottom: 4px; }
-  .deskstrip { display: flex; flex: none; align-items: center; gap: 14px; height: 22px; padding: 0 20px 4px; color: var(--graphite-2); --sk-h: 18px; }
+  .deskstrip { display: flex; flex: none; align-items: center; gap: 18px; height: 22px; padding: 0 20px 4px; color: var(--graphite-2); }
   .strip-scale { width: 110px; height: 14px; color: var(--graphite-1); }
-  .strip-loops { flex: 1; min-width: 0; align-self: stretch; background: var(--u-loops) left center / 40px 24px repeat-x; }
   .strip-kit { width: 84px; height: 18px; }
-  .deskstrip .sk { flex: none; color: var(--sinopia); opacity: .5; height: calc(var(--sk-h) * var(--s, 1)); width: calc(var(--sk-h) * var(--s, 1) * var(--ar)); }
+  .strip-row { flex: 1; min-width: 0; align-self: stretch; justify-content: space-between; gap: 0 clamp(24px, 2.4vw, 56px); opacity: .66; }
 }
-@media (min-width: 1024px) and (min-height: 600px) { .deskstrip { padding-left: 34px; } }
-@media (min-width: 1024px) and (min-height: 700px) { .deskstrip { height: 28px; --sk-h: 24px; } }
-@media (min-width: 1280px) and (min-height: 600px) { .deskstrip { padding-left: 40px; padding-right: 36px; } }
+@media (min-width: 1024px) and (min-height: 600px) { .deskstrip { padding-left: 58px; } }   /* clears the hatched corner */
+@media (min-width: 1024px) and (min-height: 700px) { .deskstrip { height: 28px; } }
+@media (min-width: 1280px) and (min-height: 600px) { .deskstrip { padding-left: 62px; padding-right: 36px; } }
+
+/* empty-state notes: on-grey, gated by the dropzone size */
+.dropzone { container-type: size; }
+.dz-notes { position: absolute; inset: 14px; color: rgba(243, 238, 229, .36); --g-ink: currentColor; pointer-events: none; }
+.dz-notes svg { position: absolute; }
+@container (min-height: 290px) or (min-width: 440px) {
+  .dz-notes .a { display: block; left: 8px; top: 8px; width: 64px; height: 22px; }
+  .dz-notes .b { display: block; right: 8px; bottom: 8px; width: 44px; height: 41px; }
+  .dz-notes.ref .b { width: 76px; height: 52px; }
+}
+@container (min-width: 560px) and (min-height: 380px) {
+  .dz-notes .a { width: 100px; height: 35px; }
+  .dz-notes.ref .a { left: 40px; top: 12px; width: 90px; height: 21px; }
+  .dz-notes .b { width: 84px; height: 78px; right: 12px; bottom: 10px; }
+  .dz-notes.ref .b { width: 132px; height: 91px; right: 8px; bottom: 6px; }
+  .dz-notes .c { display: block; left: 12px; bottom: 10px; width: 16px; height: 70px; }
+  .dz-notes.ref .c { width: 44px; height: 36px; }
+  .dz-notes .d { display: block; right: 20px; top: 14px; width: 52px; height: 23px; transform: rotate(150deg); }
+  .dz-notes.ref .d { left: 12px; right: auto; top: 12px; width: 20px; height: 20px; transform: none; }
+}
+.dialog-fig { width: 44px; height: 16px; margin-right: auto; color: var(--sinopia); opacity: .5; }
 .head-scale, .strip-scale, .inline-scale { transition: color var(--ease); }
 body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-scale) { color: var(--ink); }
 
 /* ---------- Motion: every end state equals the un-animated style ---------- */
 
 @keyframes draw-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@keyframes draw-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+/* five one-shot draw-ins (clip wipes: the strokes live in instanced symbols), done within 2s */
+.head-notes svg:first-child { animation: draw-in 700ms 400ms ease-out both; }
+.margin-notes.right svg:nth-child(2) { animation: draw-down 900ms 600ms ease-out both; }
+.margin-notes.left svg:nth-child(3) { animation: draw-down 500ms 900ms ease-out both; }
+.strip-row svg:nth-child(6) { animation: draw-in 600ms 1100ms ease-out both; }
+.dz-notes .d { animation: draw-in 500ms 1300ms ease-out both; }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-7deg); } 65% { transform: rotate(5deg); } }
 @keyframes stamp-in {
   0% { opacity: 0; transform: translate(-50%, 0) rotate(-3deg) scale(1.08); }
@@ -226,13 +289,14 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
 /* ---------- Phones ---------- */
 
 @media (max-width: 720px) {
+  .mast-notes { display: flex; flex: 1 1 0; min-width: 0; height: 22px; margin: -2px -7px; justify-content: center; gap: 0 14px; opacity: .46; align-self: center; }
   .masthead { padding: 6px 14px 9px; padding-top: calc(6px + env(safe-area-inset-top)); border-bottom: 0;
-    background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--u-head) 0 0 / 372px 40px no-repeat, var(--grain), var(--paper-2); }
+    background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
   .brand-mark { width: 22px; height: 17px; margin-right: 6px; }
   .head-scale { display: block; flex: 0 100 110px; min-width: 0; width: 110px; height: 14px; margin-left: auto; align-self: center; color: var(--graphite-1); }
-  .workspace { padding: 5px; gap: 6px; background: var(--u-hv) left 0 top 0 / 5px 64px repeat-y, var(--u-hv) right 0 top 32px / 5px 64px repeat-y; }
+  .workspace { padding: 5px; gap: 6px; background: none; }   /* the sheet itself shows in the 5px edges and the gaps */
   .panes { gap: 4px; }
-  .toolbar { padding-top: 7px; border-top: 0; background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--paper-2); }
+  .toolbar { padding-top: 7px; border-top: 0; background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
   /* The bar is full of controls: on narrow phones only the still life fits, in the free space left of "More". */
   .bar-art { display: flex; justify-content: flex-end; align-items: center; position: absolute; z-index: -1;
     inset: 8px 40px calc(4px + env(safe-area-inset-bottom)) 10px; color: var(--sinopia); opacity: .3; }
@@ -266,7 +330,7 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
 @media (max-width: 560px) {
   .dialog { padding-top: 22px; }
   .dialog h2:first-child::before { top: 3px; width: 42px; height: 13px; margin-left: -21px; }
-  .help-pencil, .inline-mirror, .inline-scale, .dialog-kit { display: none; }
+  .help-pencil, .inline-mirror, .inline-scale, .dialog-kit, .dialog-fig { display: none; }
 }
 @media (forced-colors: active) {
   .pane, .dialog, .segmented, .overlay-bar, body[data-layout="overlay"] .layer-tab { border-image: none; border-color: CanvasText; }
