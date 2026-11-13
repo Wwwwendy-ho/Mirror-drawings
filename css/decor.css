@@ -13,16 +13,13 @@
   --wobble-a: 255px 14px 225px 14px / 14px 225px 14px 255px;
   --wobble-b: 14px 225px 14px 255px / 255px 14px 225px 14px;
 
-  /* printed graph paper (teal, CSS only) under hand-ruled transfer squares; one transfer square = 8 printed cells at every width */
+  /* printed graph paper (teal, CSS only): the sheet the desk sketches lie on */
   --cell: 12px;
-  --tile: calc(var(--cell) * 32);
   --grid-teal: 46, 143, 138;
   --graph: linear-gradient(to right, rgba(var(--grid-teal), .16) 1px, transparent 0) 0 0 / var(--cell) var(--cell),
            linear-gradient(to bottom, rgba(var(--grid-teal), .16) 1px, transparent 0) 0 0 / var(--cell) var(--cell);
   --graph-q: linear-gradient(to right, rgba(var(--grid-teal), .09) 1px, transparent 0) 0 0 / var(--cell) var(--cell),
              linear-gradient(to bottom, rgba(var(--grid-teal), .09) 1px, transparent 0) 0 0 / var(--cell) var(--cell);
-  --sheet: var(--u-sheet) 0 0 / var(--tile) var(--tile), var(--graph);
-  --wash: linear-gradient(rgba(227, 220, 205, .58), rgba(227, 220, 205, .58));
   --smudge: radial-gradient(ellipse 220px 300px at 0 100%, rgba(42, 37, 33, .09), transparent 70%) no-repeat,
             radial-gradient(ellipse 200px 120px at 100% 0, rgba(42, 37, 33, .05), transparent 70%) no-repeat;
   --band-b: var(--d-rule) left bottom / 240px 5px repeat-x, var(--grain), var(--graph-q), var(--paper-2);
@@ -34,8 +31,6 @@
   --d-tick: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='3' height='22'><path d='M1.7 1.2C1 7.5 2.2 14.2 1.4 20.8' fill='none' stroke='%232a2521' stroke-opacity='.38' stroke-width='1.2' stroke-linecap='round'/></svg>");
   /* frame strokes sit inside the outer 4px so border-image-slice 4 draws them 1:1 */
   --d-frame: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M1.6 2.4C12 1.4 20 2.8 30 2 40 1.3 48 2.6 58.2 1.8 58.6 12 57.4 20 58 30 58.5 40 57.5 48 58.1 58.2 48 58.6 40 57.4 30 58 20 58.6 12 57.4 1.9 58.2 1.5 48 2.5 40 2 30 1.4 20 2.6 12 2 1.4' stroke-width='1.5' stroke-opacity='.85'/><path d='M3.4 3.4C20 2.8 40 3.6 57 3.1M56.4 4.2C56.9 22 56 40 56.5 56' stroke-width='.9' stroke-opacity='.28'/></g></svg>");
-  /* pane frame plus a 5px hatched outset on the right and bottom */
-  --d-frame-sh: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='65' height='65'><pattern id='h' width='4' height='4' patternUnits='userSpaceOnUse'><path d='M-1 1 1-1M0 4 4 0M3 5 5 3' stroke='%232a2521' stroke-opacity='.55' stroke-width='.9'/></pattern><rect x='60.6' y='6' width='4.4' height='50' fill='url(%23h)'/><rect x='6' y='60.6' width='50' height='4.4' fill='url(%23h)'/><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M1.6 2.4C12 1.4 20 2.8 30 2 40 1.3 48 2.6 58.2 1.8 58.6 12 57.4 20 58 30 58.5 40 57.5 48 58.1 58.2 48 58.6 40 57.4 30 58 20 58.6 12 57.4 1.9 58.2 1.5 48 2.5 40 2 30 1.4 20 2.6 12 2 1.4' stroke-width='1.5' stroke-opacity='.85'/><path d='M3.4 3.4C20 2.8 40 3.6 57 3.1M56.4 4.2C56.9 22 56 40 56.5 56' stroke-width='.9' stroke-opacity='.28'/><path d='M60.6 61l3.8-3.5M57.5 64.4l3.5-3.8M61.6 64.4l2.8-3' stroke-width='.9' stroke-opacity='.55'/></g></svg>");
   --d-tape: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 18'><path d='M2.5 1 4 3.5 2 5.5 4 8 2 10.5 4 13 2.5 17H57.5L56 14.5 58 12 56 9.5 58 7 56 4.5 57.5 1z' fill='%23ead9a0' fill-opacity='.94'/><path d='M4 1.5H56M4 16.5H56' stroke='%232a2521' stroke-opacity='.18'/><path d='M8 6.5H50M11 11.5H53' stroke='%23fff' stroke-opacity='.32'/></svg>");
   --d-swipe: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 30' preserveAspectRatio='none'><path d='M3 5.5C30 3.5 70 4.5 97.5 3L96 9l2.5 4-2 5 1.5 7.5C68 27.5 32 26 2.5 27.5L4 20 1.5 14z' fill='%23f1dc7a'/></svg>");
   --d-hatch: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><path d='M-1 9 9-1M-1 5 5-1M3 9 9 3' stroke='%23ece6da' stroke-opacity='.09' stroke-width='1'/></svg>");
@@ -45,24 +40,14 @@
   --d-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2.6 8.7c1.3 1.2 2.3 2.5 3.1 3.9C7.8 8.6 10.5 5.3 14 2.6' fill='none' stroke='%23e0a184' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 
   /* underdrawing tiles (chalk) */
-  /* transfer squares, hand-ruled over the printed grid: 4 x 4 squares per tile; every line enters and leaves the tile at the same offset */
-  --u-sheet: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M0 .9C90 .2 200 1.6 384 .9M0 96.7C120 97.4 260 96 384 96.7M0 192.5C80 191.8 240 193.2 384 192.5M0 288.8C140 289.5 280 288.1 384 288.8M.9 0C.2 90 1.6 200 .9 384M96.7 0C97.4 120 96 260 96.7 384M192.5 0C191.8 80 193.2 240 192.5 384M288.8 0C289.5 140 288.1 280 288.8 384' stroke-opacity='.34'/><path d='M0 98.3C150 97.6 250 98.9 384 98.3M194.1 0C193.6 130 194.7 250 194.1 384' stroke-opacity='.16' stroke-width='.8'/><path d='M97 288.4 288.4 97' stroke-opacity='.22' stroke-dasharray='7 6'/><path d='M110 192.4C110 146 147 110 192.4 110' stroke-opacity='.26'/><path d='M144.6 93v7.4M240.5 285v7.6M93 240.4h7.4M285 48.4h7.6M45 1.2l3.4 3.2M48.6 1 45.2 4.6' stroke-opacity='.34'/></g></svg>");
-  /* twin-wire binding down the left edge (graphite: metal, not chalk); 28px pitch */
-  --u-bind: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='28'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M0 9.4C5 4.6 14 4.4 16 9.2c1.2 3.4-1.2 5.8-4.6 5.6M0 12.6C5 7.8 14 7.6 16 12.4c1.2 3.4-1.2 5.8-4.6 5.6' stroke-opacity='.3' stroke-width='1.1'/><path d='M9 14.6c0-1.2 4.8-1.2 4.8 0v3.8c0 1.2-4.8 1.2-4.8 0z' stroke-opacity='.18' stroke-width='.9'/></g></svg>");
-  /* value-gradient hatching for the bottom-left corner: dense and crossed at the foot, thinning to nothing 200px up */
-  --f-hatchcol: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='210'><g fill='none' stroke='%23a5502f' stroke-linecap='round'><path d='M2 208l31-21m-31 16 30-20m-30 15 32-22m-31 16 30-20m-31 15 31-21m-30 16 29-20m-30 15 32-21m-31 16 30-21m-30 16 31-20m-31 15 29-20' stroke-opacity='.46'/><path d='M4 190l24 16M3 180l30 20M6 172l26 18' stroke-opacity='.32' stroke-width='.8'/><path d='M3 156l28-19m-28 11 30-21m-29 12 27-18m-28 9 29-20m-28 11 26-18' stroke-opacity='.32'/><path d='M4 112l24-16m-24 4 26-18m-25 3 22-15m-21 0 18-12' stroke-opacity='.15' stroke-width='.9'/></g></svg>");
-  --d-ruler: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='8'><g fill='none' stroke='%232a2521' stroke-linecap='round'><path d='M0 6.6C20 6.1 50 7.1 80 6.6' stroke-width='1.2' opacity='.62'/><path d='M4.2 6.4V1M12 6.5V3.8M20.1 6.6V3.6M27.9 6.7V3.9M36 6.8V3.7M44.1 6.8V1.2M52 6.8V3.8M59.9 6.7V3.6M68.1 6.6V3.9M76 6.5V3.7' stroke-width='.9' opacity='.5'/></g></svg>");
-  --u-loops: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='36'><path d='M0 30c8-26 34-26 30-4-3 13-13 13-10 4 8-26 34-25 30-4-3 12-13 13-10 4 8-27 34-26 30-4-3 13-13 12-10 4' fill='none' stroke='%23a5502f' stroke-opacity='.26' stroke-width='1.1' stroke-linecap='round'/></svg>");
   --u-sphere: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><g fill='none' stroke='%23a5502f' stroke-opacity='.2' stroke-width='1.2' stroke-linecap='round'><path d='M60 8c29-.4 52.5 23 52 52.5-.5 28.5-23.5 51.5-52.5 51.5C30.5 112 7.5 88.5 8 59.5 8.5 31 31.5 8.2 60.5 8.3'/><path d='M8 60c8 13 30 20 52 20s44-7 52-20M8 60c8-13 30-20 52-20s44 7 52 20M60 8C44 20 36 38 36 60s8 40 24 52'/><path d='M60 2v116M2 60h116' stroke-dasharray='5 5'/></g></svg>");
-  --d-plumb: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 200' preserveAspectRatio='none'><path d='M4.5 0C4.1 60 5 130 4.5 200' fill='none' stroke='%23a5502f' stroke-width='1.1' stroke-opacity='.85'/></svg>");
-  --d-bob: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 18'><path d='M4.5 0v3.4' stroke='%23a5502f' stroke-width='1.1' fill='none'/><path d='M4.5 3.2C1.7 7 1.4 12 4.4 17.2 7.6 12 7.4 7 4.5 3.2z' fill='%23a5502f' fill-opacity='.85'/></svg>");
 }
 
 @media (max-width: 720px) { :root { --cell: 10px; } }
 
 /* ---------- Page and header ---------- */
 
-body { background: var(--grain), var(--smudge), var(--sheet), var(--paper); }
+body { background: var(--grain), var(--smudge), var(--graph), var(--paper); }
 .doodle { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; pointer-events: none; }
 /* strokes inside symbols: bare classes (ancestor selectors do not reach into <use>) */
 .u, .ax { stroke: var(--u-ink, currentColor); stroke-width: 1.1; opacity: var(--u-op, .5); }
@@ -72,37 +57,45 @@ body { background: var(--grain), var(--smudge), var(--sheet), var(--paper); }
 .sg { stroke: var(--g-ink, var(--graphite-2)); }                           /* graphite note; on the grey mat --g-ink is currentColor */
 .st { stroke-dasharray: 7 1.5 4 2.5 2 4; opacity: .6; }                    /* skipping tail */
 .fade { -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 45%, #000 50%, transparent 100%); mask-image: radial-gradient(ellipse 62% 64% at 50% 45%, #000 50%, transparent 100%); }
-:is(.brand-mark, .deskstrip, .margin-notes, .bar-art, .dialog-kit) { --u-ink: var(--sinopia); --u-op: .9; }
+:is(.brand-mark, .dialog-kit) { --u-ink: var(--sinopia); --u-op: .9; }
 
-.top { padding-bottom: 9px; border-bottom: 0;
-  /* the same sheet runs on through the header, under a paper veil, from the same origin as the body */
-  background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
+/* Slips: the masthead, toolbar and Overlay compare strip are paper laid on the desk; the band between them is the desk itself. */
+:root { --slip: rgba(227, 220, 205, .92); --veil: rgba(227, 220, 205, .66); --lift: 2px 3px 0 rgba(42, 37, 33, .15); }
+.top { padding-bottom: 9px; border-bottom: 0; background: none; }
+/* the slip is painted outside the content box by negative margins, so no text moves and the header keeps its exact baseline height (one or two rows) */
+@media (min-width: 721px) { .masthead, .toolbar { padding: 2px 6px; margin: -2px -6px; background: var(--grain), var(--slip); box-shadow: var(--lift); } .toolbar { margin-left: auto; } }
+@media (min-width: 721px) { .masthead { border-radius: var(--wobble-a); } .toolbar { border-radius: var(--wobble-b); } }
+body[data-layout="overlay"] .overlay-bar { padding: 0 8px; background: var(--grain), var(--slip); box-shadow: var(--lift); border-radius: var(--wobble-b); }
+@media (min-width: 721px) and (min-height: 600px) { body[data-layout="overlay"] .overlay-bar { align-self: flex-start; max-width: 100%; } }
 .brand { display: inline-flex; align-items: baseline; flex: 0 1 auto; min-width: 0; }
 .brand-mark { align-self: center; width: 26px; height: 20px; margin-right: 8px; color: var(--graphite-1); }
 .brand-name { position: relative; min-width: 0; padding-bottom: 5px; margin-bottom: -5px; overflow: hidden; text-overflow: ellipsis; }
 .brand-name::after { content: ""; position: absolute; inset: auto 0 0; height: 7px; background: var(--d-underline-s) left bottom / 100% 100% no-repeat; animation: draw-in 700ms 200ms ease-out both; }
 .tagline { flex: 0 10 auto; }
-.head-scale { display: none; }
 @media (min-width: 721px) and (max-width: 1000px) { .toolbar .btn > span { display: none; } } /* tablets: the labelled toolbar ran off the right edge */
 @media (min-width: 721px) { .toolbar > * + *, .tool-group + .tool-group { border-left: 0; background: var(--d-tick) left center / 3px 22px no-repeat; } }
 
-/* ---------- Workspace: L-square, plumb line, hatched taped prints ---------- */
+/* ---------- Workspace: taped prints lying on the desk ---------- */
 
 .workspace { padding: 9px 13px; }
 .panes { gap: 8px; }
-.pane { border: 4px solid var(--rule-strong); border-image: var(--d-frame-sh) 4 9 9 4 / 4px 9px 9px 4px / 0 5px 5px 0 round; border-radius: 0; }
+/* the prints lie ON the desk: a hard offset edge (paper thickness) plus a soft shadow falling on the sketches */
+.pane { border: 4px solid var(--rule-strong); border-image: var(--d-frame) 4 / 4px round; border-radius: 0;
+  box-shadow: 0 0 0 1px rgba(42, 37, 33, .08), 3px 4px 0 rgba(42, 37, 33, .22), 8px 11px 16px -6px rgba(42, 37, 33, .36); }
 .pane::before, .pane::after { content: ""; position: absolute; z-index: 4; pointer-events: none; width: 64px; height: 19px; top: -12px; background: var(--d-tape) center / 100% 100% no-repeat; }
 .pane::before { left: 14px; transform: rotate(-4deg); }
 .pane::after { right: 18px; transform: rotate(3deg); }
+.pane[data-slot="reference"]::before { left: 30px; transform: rotate(3deg); }
+.pane[data-slot="reference"]::after { right: 12px; transform: rotate(-5deg); }
 @media (min-width: 721px) {
+  .workspace { position: relative; padding-left: 18px; padding-right: 18px; }
   .panes { position: relative; }
-  body[data-layout="side"] .panes { column-gap: 14px; }
-  body[data-layout="side"] .panes::after {
-    content: ""; position: absolute; pointer-events: none; z-index: 3; left: calc(50% + 2px); margin-left: -4.5px; width: 9px; top: -6px; bottom: 8px;
-    background: var(--d-plumb) center top / 9px calc(100% - 17px) no-repeat, var(--d-bob) center bottom / 9px 18px no-repeat;
-    transform-origin: 50% 0; animation: plumb 1100ms 350ms ease-out both;
-  }
+  body[data-layout="side"] .panes { column-gap: 18px; }
 }
+@media (min-width: 1024px) { .workspace { padding-left: 30px; padding-right: 30px; } body[data-layout="side"] .panes { column-gap: 24px; } }
+@media (min-width: 1280px) { .workspace { padding-left: 44px; padding-right: 44px; } body[data-layout="side"] .panes { column-gap: 30px; } }
+@media (min-width: 721px) and (min-height: 600px) { .workspace { padding-bottom: 20px; } body[data-layout="stacked"] .panes { row-gap: 16px; } }
+@media (min-width: 1024px) and (min-height: 700px) { .workspace { padding-bottom: 24px; } }
 .pane-head { border-bottom: 0; background: var(--band-b); }
 .layer-tab::before { border: 0; border-radius: 0; width: 10px; height: 10px; background: var(--d-marker) center / contain no-repeat; }
 .layer-ctl.is-current .layer-tab::before { background: radial-gradient(circle, var(--accent) 2.6px, transparent 3.2px), var(--d-marker) center / contain no-repeat; }
@@ -143,10 +136,8 @@ body[data-layout="overlay"] .layer-ctl:not(.has-image) .layer-tab { border-image
 body[data-layout="overlay"] .layer-ctl.is-current:not(.has-image) .layer-tab { background: var(--d-swipe) center / calc(100% - 4px) calc(100% - 6px) no-repeat, var(--paper); }
 body[data-layout="overlay"] .pane-body > .pane-status:not([hidden])::before { filter: brightness(2.6) saturate(.7); }
 /* ...and the strip under the sheet keeps the desk strip's running loops in its free space. */
-body[data-layout="overlay"] .overlay-bar::after { content: ""; flex: 1; align-self: stretch; min-width: 0; background: var(--u-loops) left center / 40px 24px repeat-x; }
 @media (max-width: 720px), (min-width: 721px) and (max-height: 599px) {
   body[data-layout="overlay"] .layer-tab { height: 44px; }
-  body[data-layout="overlay"] .overlay-bar::after { display: none; }
   body[data-layout="overlay"] .pane-tools { border-top: 0; padding-top: 12px; background: var(--band-t); }
   body[data-layout="overlay"] .tools-toggle[aria-expanded="true"] { background: var(--d-hatch), var(--graphite-1); color: var(--paper); }
 }
@@ -187,95 +178,35 @@ kbd { border-radius: var(--wobble-a); }
   background: linear-gradient(var(--t), var(--t)) 50% 0 / 1px 9px no-repeat, linear-gradient(var(--t), var(--t)) 50% 100% / 1px 9px no-repeat,
     linear-gradient(var(--t), var(--t)) 0 50% / 9px 1px no-repeat, linear-gradient(var(--t), var(--t)) 100% 50% / 9px 1px no-repeat; }
 
-/* ---------- Border sketches: top (header), gutters, desk strip, phone frieze. Chalk, behind or beside, never over an image ---------- */
+/* ---------- The desk: one fixed sketch sheet under everything; panes and slips are paper laid on it ---------- */
 
 .k :is(path, circle) { vector-effect: non-scaling-stroke; }
-.bar-art .doodle { stroke-width: 1.2; }
-:is(.head-notes, .mast-notes, .strip-row, .margin-notes, .dz-notes) svg { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
-.deskstrip, .margin-notes, .bar-art, .head-notes, .mast-notes, .dz-notes svg { display: none; pointer-events: none; }
-/* wrap-and-clip rows: pieces that do not fit drop out whole, in DOM order. contain: size is mandatory (else the header grows) */
-.strip-row { display: flex; }
-:is(.head-notes, .mast-notes, .strip-row) { flex-wrap: wrap; align-content: flex-start; overflow: hidden; contain: size layout paint; color: var(--sinopia); }
-:is(.head-notes, .mast-notes, .strip-row) svg { flex: none; height: 100%; width: calc(var(--w) * 1px); transform: rotate(var(--r, 0deg)); }
-@supports not (contain: size) { .head-notes, .mast-notes { display: none !important; } }
-
-@media (min-width: 721px) {
-  .top { position: relative; }
-  /* zero-basis item beside the masthead: takes only free space; negative margins cancel the gap and keep it clear of the toolbar */
-  .head-notes { display: flex; flex: 1 1 0; min-width: 0; align-self: stretch; margin: -8px 0 -7px -16px; padding: 0 20px; justify-content: space-evenly; gap: 0 22px; opacity: .62; container-type: size; }
-  @container (max-width: 85px) { .head-notes svg { display: none; } }
-  .workspace { position: relative; padding-left: 20px; padding-right: 20px; background: var(--f-hatchcol) 0 100% / 30px 158px no-repeat; }
-  /* gutters: before .panes in the source so the panes cover what slides under them */
-  .margin-notes { display: flex; flex-direction: column; justify-content: space-between; position: absolute; top: 30px; bottom: 30px; overflow: hidden; color: var(--sinopia); opacity: .62; --ms: .8; }
-  .margin-notes svg { flex: none; width: calc(var(--w) * var(--ms) * 1px); height: calc(var(--w) * var(--ar) * var(--ms) * 1px); margin-left: calc(var(--x, 0) * var(--ms) * 1px); transform: rotate(var(--r, 0deg)); }
-  .margin-notes.left { left: 3px; width: 14px; align-items: center; }
-  .margin-notes.right { right: 0; width: 44px; }                     /* 20 visible + 24 under the pane */
-  .margin-notes svg:nth-child(5), .margin-notes.right svg:nth-child(3) { display: none; }
-}
-@media (min-width: 1024px) {
-  .workspace { padding-left: 34px; padding-right: 24px; background: var(--u-bind) 0 6px / 22px 28px repeat-y, var(--f-hatchcol) 16px 100% / 40px 210px no-repeat; }
-  .margin-notes { --ms: .9; }
-  .margin-notes.left { left: 17px; width: 17px; }                    /* right of the binding */
-  .margin-notes.right { width: 50px; }                               /* 24 visible + 26 under */
-  .margin-notes.right svg:nth-child(3) { display: block; }
-}
-@media (min-width: 1024px) and (max-height: 599px) { .workspace { background: var(--u-bind) 0 6px / 22px 28px repeat-y, var(--f-hatchcol) 16px 100% / 30px 158px no-repeat; } }
-@media (min-width: 1280px) {
-  .workspace { padding-left: 40px; padding-right: 36px; }
-  .margin-notes { --ms: 1; }
-  .margin-notes.left { width: 22px; }
-  .margin-notes.right { width: 62px; }                               /* 36 visible + 26 under */
-  .margin-notes svg:nth-child(5) { display: block; }
-}
-@media (min-width: 721px) and (max-height: 719px) { .margin-notes.left svg:nth-child(n+6), .margin-notes.right svg:nth-child(n+7) { display: none; } }
-@media (min-width: 721px) and (max-height: 760px) { .margin-notes svg:nth-child(5) { display: none; } }
-@media (min-width: 721px) and (max-height: 660px) { .margin-notes svg:nth-child(3), .margin-notes.right svg:nth-child(3) { display: none; } }   /* .right twin: out-specifies the >= 1024 display:block */
-@media (min-width: 721px) and (max-height: 560px) { .margin-notes svg:nth-child(n+3), .margin-notes.right svg:nth-child(n+3) { display: none; } }
-@media (min-width: 721px) and (max-height: 420px) { .margin-notes svg:nth-child(n+2) { display: none; } }
-@media (min-width: 721px) and (min-height: 600px) {
-  .workspace { padding-bottom: 4px; }
-  .deskstrip { display: flex; flex: none; align-items: center; gap: 18px; height: 22px; padding: 0 20px 4px; color: var(--graphite-2); }
-  .strip-scale { width: 110px; height: 14px; color: var(--graphite-1); }
-  .strip-kit { width: 84px; height: 18px; }
-  .strip-row { flex: 1; min-width: 0; align-self: stretch; justify-content: space-between; gap: 0 clamp(24px, 2.4vw, 56px); opacity: .66; }
-}
-@media (min-width: 1024px) and (min-height: 600px) { .deskstrip { padding-left: 58px; } }   /* clears the hatched corner */
-@media (min-width: 1024px) and (min-height: 700px) { .deskstrip { height: 28px; } }
-@media (min-width: 1280px) and (min-height: 600px) { .deskstrip { padding-left: 62px; padding-right: 36px; } }
-
-/* empty-state notes: on-grey, gated by the dropzone size */
-.dropzone { container-type: size; }
-.dz-notes { position: absolute; inset: 14px; color: rgba(243, 238, 229, .36); --g-ink: currentColor; pointer-events: none; }
-.dz-notes svg { position: absolute; }
-@container (min-height: 290px) or (min-width: 440px) {
-  .dz-notes .a { display: block; left: 8px; top: 8px; width: 64px; height: 22px; }
-  .dz-notes .b { display: block; right: 8px; bottom: 8px; width: 44px; height: 41px; }
-  .dz-notes.ref .b { width: 76px; height: 52px; }
-}
-@container (min-width: 560px) and (min-height: 380px) {
-  .dz-notes .a { width: 100px; height: 35px; }
-  .dz-notes.ref .a { left: 40px; top: 12px; width: 90px; height: 21px; }
-  .dz-notes .b { width: 84px; height: 78px; right: 12px; bottom: 10px; }
-  .dz-notes.ref .b { width: 132px; height: 91px; right: 8px; bottom: 6px; }
-  .dz-notes .c { display: block; left: 12px; bottom: 10px; width: 16px; height: 70px; }
-  .dz-notes.ref .c { width: 44px; height: 36px; }
-  .dz-notes .d { display: block; right: 20px; top: 14px; width: 52px; height: 23px; transform: rotate(150deg); }
-  .dz-notes.ref .d { left: 12px; right: auto; top: 12px; width: 20px; height: 20px; transform: none; }
-}
+.desk { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; contain: strict; will-change: transform;
+  fill: none; color: var(--sinopia); stroke-linecap: round; stroke-linejoin: round; --mo: .5; animation: desk-in 900ms ease-out both; }
+.desk :is(path, rect) { vector-effect: non-scaling-stroke; }
+.desk .fs { stroke: var(--ink); stroke-width: 1; }
+.desk .sd { fill: var(--ink); fill-opacity: .09; stroke: none; }
+.desk .pa { fill: #f3efe4; fill-opacity: .78; stroke-opacity: .3; }
+.desk .pb { fill: #e6dfcf; fill-opacity: .8; stroke-opacity: .3; }
+.desk .f1 { stroke: var(--sinopia); stroke-width: 1.3; opacity: .48; }
+.desk .f2 { stroke: var(--sinopia); stroke-width: 1.1; opacity: .42; }
+.desk .f3 { stroke: var(--graphite-1); stroke-width: 1.1; opacity: .26; }
+.desk .ft { stroke: #2e8f8a; stroke-width: 1.2; opacity: .5; }
+.desk .m { stroke: var(--sinopia); stroke-width: 1.3; opacity: var(--mo); }
+.desk .n { stroke: var(--graphite-1); }
+.desk .t { stroke: #2e7f86; }
+@media (min-width: 1024px) { .desk { --mo: .56; } }
+@media (min-width: 1280px) { .desk { --mo: .6; } }
+@media (forced-colors: active), print { .desk { display: none; } }
+@keyframes desk-in { from { opacity: 0; } }
+.inline-scale { transition: color var(--ease); }
+body:has(#btn-gray[aria-pressed="true"]) .inline-scale { color: var(--ink); }
 .dialog-fig { width: 44px; height: 16px; margin-right: auto; color: var(--sinopia); opacity: .5; }
-.head-scale, .strip-scale, .inline-scale { transition: color var(--ease); }
-body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-scale) { color: var(--ink); }
 
 /* ---------- Motion: every end state equals the un-animated style ---------- */
 
 @keyframes draw-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-@keyframes draw-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
 /* five one-shot draw-ins (clip wipes: the strokes live in instanced symbols), done within 2s */
-.head-notes svg:first-child { animation: draw-in 700ms 400ms ease-out both; }
-.margin-notes.right svg:nth-child(2) { animation: draw-down 900ms 600ms ease-out both; }
-.margin-notes.left svg:nth-child(3) { animation: draw-down 500ms 900ms ease-out both; }
-.strip-row svg:nth-child(6) { animation: draw-in 600ms 1100ms ease-out both; }
-.dz-notes .d { animation: draw-in 500ms 1300ms ease-out both; }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-7deg); } 65% { transform: rotate(5deg); } }
 @keyframes stamp-in {
   0% { opacity: 0; transform: translate(-50%, 0) rotate(-3deg) scale(1.08); }
@@ -283,27 +214,19 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
   100% { opacity: 1; transform: translate(-50%, 0) rotate(-.6deg) scale(1); }
 }
 @keyframes scribble-spin { to { transform: rotate(360deg); } }
-@keyframes plumb { 0% { transform: rotate(2.4deg); opacity: 0; } 15% { opacity: 1; } 40% { transform: rotate(-1.3deg); } 70% { transform: rotate(.5deg); } 100% { transform: none; } }
 @keyframes scribble { 0%, 100% { transform: none; } 20% { transform: translate(-2px, 1.2px); } 40% { transform: translate(1.5px, -1px); } 60% { transform: translate(-1.5px, .8px); } 80% { transform: translate(1px, -.6px); } }
 
 /* ---------- Phones ---------- */
 
 @media (max-width: 720px) {
-  .mast-notes { display: flex; flex: 1 1 0; min-width: 0; height: 22px; margin: -2px -7px; justify-content: center; gap: 0 14px; opacity: .46; align-self: center; }
-  .masthead { padding: 6px 14px 9px; padding-top: calc(6px + env(safe-area-inset-top)); border-bottom: 0;
-    background: var(--d-ruler) left bottom / 80px 8px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
+  .masthead { padding: 6px 14px 9px; padding-top: calc(6px + env(safe-area-inset-top)); border-bottom: 0; background: none; box-shadow: none; }
+  .brand { padding: 3px 9px 4px; margin: -3px -9px -4px; background: var(--grain), var(--slip); box-shadow: var(--lift); border-radius: var(--wobble-a); }
   .brand-mark { width: 22px; height: 17px; margin-right: 6px; }
-  .head-scale { display: block; flex: 0 100 110px; min-width: 0; width: 110px; height: 14px; margin-left: auto; align-self: center; color: var(--graphite-1); }
-  .workspace { padding: 5px; gap: 6px; background: none; }   /* the sheet itself shows in the 5px edges and the gaps */
-  .panes { gap: 4px; }
-  .toolbar { padding-top: 7px; border-top: 0; background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--wash), var(--sheet), var(--paper-2); }
+  .workspace { padding: 6px; gap: 6px; background: none; }
+  .panes { gap: 10px; }
+  .pane { box-shadow: 0 0 0 1px rgba(42, 37, 33, .08), 2px 3px 0 rgba(42, 37, 33, .22), 4px 6px 9px -4px rgba(42, 37, 33, .34); }
+  .toolbar { padding-top: 7px; border-top: 0; border-radius: 0; box-shadow: none; background: var(--d-rule) left top / 240px 5px repeat-x, var(--grain), var(--veil); }
   /* The bar is full of controls: on narrow phones only the still life fits, in the free space left of "More". */
-  .bar-art { display: flex; justify-content: flex-end; align-items: center; position: absolute; z-index: -1;
-    inset: 8px 40px calc(4px + env(safe-area-inset-bottom)) 10px; color: var(--sinopia); opacity: .3; }
-  .bar-art svg { height: 26px; width: auto; flex: none; }
-  .bar-art svg:not(:nth-child(3)) { display: none; }
-  .bar-art svg:nth-child(3) { height: 20px; }
-  .bar-art svg:nth-child(4) { height: 16px; }
   .toolbar .segmented label { height: 38px; }
   .tools-toggle[aria-expanded="true"] { background: var(--d-hatch), var(--graphite-1); color: var(--paper); }
   .pane::before { width: 38px; height: 12px; top: -8px; left: 10px; }
@@ -319,13 +242,11 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
 }
 @media (max-width: 720px) and (min-height: 640px) { body[data-layout="side"] .empty-art { display: block; width: 100px; height: 72px; } }
 @media (max-width: 360px) { /* 320px phones: the bottom bar used to overflow and clip the Overlay option */
+  .workspace { padding: 5px; } .panes { gap: 4px; }   /* zero-cost fallback: at 10px gap the Reference head wrapped to a second row in Side */
   .toolbar { gap: 4px; padding-left: 6px; padding-right: 6px; }
   .toolbar .btn { min-width: 38px; padding: 0 6px; }
   .toolbar .segmented label { padding: 0 10px; }
-  .head-scale { flex-basis: 74px; width: 74px; height: 9.4px; }
 }
-@media (max-width: 360px) { .bar-art { inset-right: 34px; } .bar-art svg:nth-child(3) { height: 16px; } }
-@media (min-width: 481px) and (max-width: 720px) { .bar-art { justify-content: space-around; inset-inline: 10px; } .bar-art svg:not(:nth-child(3)) { display: block; } .bar-art svg:nth-child(3) { height: 26px; } }
 @media (max-width: 360px) and (min-height: 640px) { body[data-layout="side"] .empty-art { width: 92px; height: 66px; } }
 @media (max-width: 560px) {
   .dialog { padding-top: 22px; }
@@ -334,7 +255,8 @@ body:has(#btn-gray[aria-pressed="true"]) :is(.head-scale, .strip-scale, .inline-
 }
 @media (forced-colors: active) {
   .pane, .dialog, .segmented, .overlay-bar, body[data-layout="overlay"] .layer-tab { border-image: none; border-color: CanvasText; }
-  .pane::before, .pane::after, .panes::after { display: none; }
+  .pane::before, .pane::after { display: none; }
+  .pane { box-shadow: none; }
 }
 /* Line up coach: a piece of tape at the corner, like the toast. */
 .dot-coach { border-radius: var(--wobble-b); background: var(--d-hatch), var(--graphite-1); }

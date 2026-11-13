@@ -942,7 +942,6 @@ body[data-layout="overlay"] .pane-body > .pane-status {
 
 /* Compare strip: no frame, under the sheet. */
 body[data-layout="overlay"] .overlay-bar { border: 0; padding: 0; min-height: 30px; flex-wrap: nowrap; gap: 10px 14px; background: none; }
-body[data-layout="overlay"] .deskstrip { display: none; }
 body[data-layout="overlay"] .overlay-bar > .btn, body[data-layout="overlay"] .overlay-bar > .segmented { flex: none; }
 
 /* Desktop: the selected layer's tool row sits in the head, at the right. */
