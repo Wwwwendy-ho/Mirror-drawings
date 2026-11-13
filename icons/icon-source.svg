@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Sinopia app icon master. Full-bleed square, opaque paper background.
+       Red-chalk construction underdrawing (egg + cross axes + eye socket) with a
+       charcoal half-face drawn over its right side. Key art sits inside the central 80%. -->
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="46%" r="75%">
+      <stop offset="0" stop-color="#f1ecdf"/>
+      <stop offset="0.7" stop-color="#ebe4d6"/>
+      <stop offset="1" stop-color="#e0d7c5"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#ece6da"/>
+  <rect width="1024" height="1024" fill="url(#paper)"/>
+
+  <!-- printed teal graph-paper grid -->
+  <g stroke="#2e8f8a" stroke-opacity="0.17" stroke-width="3" fill="none">
+    <path d="M64 0V1024M192 0V1024M320 0V1024M448 0V1024M576 0V1024M704 0V1024M832 0V1024M960 0V1024"/>
+    <path d="M0 64H1024M0 192H1024M0 320H1024M0 448H1024M0 576H1024M0 704H1024M0 832H1024M0 960H1024"/>
+  </g>
+
+  <g id="art" transform="translate(512 512) scale(1.06) translate(-512 -514)">
+    <!-- ===== red-chalk underdrawing (the sinopia) ===== -->
+    <g fill="none" stroke="#a5502f" stroke-linecap="round" stroke-linejoin="round">
+      <!-- construction egg, two passes -->
+      <path d="M520 138 C676 132 800 256 798 442 C796 648 672 884 514 888 C360 892 232 660 228 450 C224 258 352 142 520 138 C566 138 606 148 640 164" stroke-width="40" stroke-opacity="0.92"/>
+      <path d="M470 150 C330 172 246 296 250 462 C256 650 372 866 508 872 C652 878 772 664 780 452 C786 290 690 158 540 150" stroke-width="20" stroke-opacity="0.5"/>
+      <!-- vertical axis, hand-ruled with overshoot -->
+      <path d="M516 96 C513 300 511 640 507 930" stroke-width="30" stroke-opacity="0.95"/>
+      <path d="M527 112 C523 380 520 700 519 916" stroke-width="12" stroke-opacity="0.5"/>
+      <!-- eye line -->
+      <path d="M196 536 C380 526 640 520 832 510" stroke-width="28" stroke-opacity="0.95"/>
+      <path d="M214 522 C420 516 660 508 818 498" stroke-width="11" stroke-opacity="0.45"/>
+      <!-- left eye socket, still only construction -->
+      <path d="M306 528 C318 478 440 470 458 522 C452 574 322 582 306 528 C308 508 324 494 344 488" stroke-width="20" stroke-opacity="0.9"/>
+      <!-- chalk grain: paper showing through the stroke -->
+      <g stroke="#ece6da" stroke-opacity="0.55" stroke-width="7" stroke-linecap="butt">
+        <path d="M520 138 C676 132 800 256 798 442 C796 648 672 884 514 888 C360 892 232 660 228 450 C224 258 352 142 520 138" stroke-dasharray="3 41 7 67 2 29 5 53"/>
+        <path d="M516 96 C513 300 511 640 507 930" stroke-dasharray="4 37 2 59 6 43"/>
+        <path d="M196 536 C380 526 640 520 832 510" stroke-dasharray="5 47 3 31 2 61"/>
+      </g>
+    </g>
+
+    <!-- ===== charcoal drawing over the right half ===== -->
+    <g fill="none" stroke="#2a2622" stroke-linecap="round" stroke-linejoin="round">
+      <!-- skull, cheek, jaw, chin: one confident line -->
+      <path d="M446 180 C566 146 704 192 746 318 C772 398 768 488 754 566 C744 630 728 676 700 718 C656 786 598 842 548 864 C526 873 502 872 470 856" stroke-width="38"/>
+      <path d="M690 236 C730 280 752 340 758 410 C762 470 758 530 748 584 C740 634 724 676 702 712" stroke-width="52"/>
+      <path d="M596 836 C576 852 556 862 538 866" stroke-width="48"/>
+      <path d="M486 146 C600 128 736 186 782 322 C798 380 800 440 794 500" stroke-width="13" stroke-opacity="0.6"/>
+      <!-- brow -->
+      <path d="M560 432 C606 398 676 400 726 440" stroke-width="30"/>
+      <!-- eye -->
+      <path d="M566 524 C602 470 674 466 716 516 L728 524" stroke-width="28"/>
+      <path d="M574 532 C612 566 672 562 708 526" stroke-width="20"/>
+      <!-- nose -->
+      <path d="M540 560 C544 620 560 654 576 676 C560 696 538 700 516 694" stroke-width="26"/>
+      <!-- mouth -->
+      <path d="M522 766 C556 772 598 770 636 760 L648 768" stroke-width="26"/>
+    </g>
+    <ellipse cx="642" cy="516" rx="27" ry="29" fill="#2a2622"/>
+
+    <!-- vermilion alignment dot on the axis crossing -->
+    <path d="M513 492 C532 490 546 505 545 524 C544 544 529 556 511 555 C493 554 480 540 481 521 C482 504 496 493 513 492Z" fill="#d8432b"/>
+  </g>
+</svg>

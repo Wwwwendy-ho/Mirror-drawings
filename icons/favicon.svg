@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Sinopia favicon: simplified mark for 16-32 px. Red-chalk egg + axes, charcoal half-face over the right side. -->
+  <rect width="64" height="64" rx="12" fill="#ece6da"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#a5502f">
+      <path d="M32.5 7 C43.5 6.6 51 15 50.8 27.5 C50.6 41 42.5 56.6 32 57 C22 57.3 13.4 42 13.2 28 C13 15.5 21.5 7.3 32.5 7Z" stroke-width="4.6"/>
+      <path d="M32.2 3.5 C32 20 31.9 42 31.6 60.5" stroke-width="3.4"/>
+      <path d="M10.5 34 C22 33.4 40 33 53.5 32.2" stroke-width="3.2"/>
+    </g>
+    <path d="M28 9.6 C36 7.6 45.4 11 48 19.6 C50 26 49.4 33.4 47.8 39.4 C46 46.4 40.6 52.6 35 55 C33.2 55.7 31.4 55.5 29.6 54.8" stroke="#2a2622" stroke-width="5.6"/>
+  </g>
+  <ellipse cx="40.4" cy="32.4" rx="3.6" ry="3.8" fill="#2a2622"/>
+</svg>
