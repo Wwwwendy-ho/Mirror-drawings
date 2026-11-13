@@ -102,7 +102,7 @@ If the site does not update after a push, open the repository's **Actions** tab 
 ```
 index.html       markup, SVG icon sprite, dialogs, per-pane tools template
 css/style.css    warm paper theme, responsive layout, alignment dots
-css/decor.css    "squared-up sheet" decoration: red-chalk transfer grid and underdrawing, red-chalk warm-up sketches all round the border (header, both gutters, bottom strip, phone edges), graphite rulers and plumb line, taped hatch-shadowed panes, the paintbrush and face studies in the empty state (chrome only; never drawn over an image)
+css/decor.css    "doodled graph-paper sheet" decoration: a printed teal graph grid under hand-ruled red transfer squares, spiral-binding rings and a hatched corner at the left edge, loose pencil studies (cube, sphere, cylinder, orbit, building, book, pencil, clip) and marker marks (arrows, brackets, bubbles, zig-zags) in the header, both gutters, the desk strip and the phone bars, faint on-grey corner notes in empty panes, graphite rulers and plumb line, taped hatch-shadowed panes. Chrome only: nothing is drawn over a loaded image, and the sketches are static (five short draw-in motions on load, skipped with reduced motion). The sketch symbols (s-*) live in the SVG sprite in index.html
 css/tips.css     info bubbles: the tooltip's look, plus the no-callout/no-select rules that make long-press safe on touch
 js/brand.js      the one place the site name lives (SITE.name, SITE.slug)
 js/app.js        state, UI wiring, persistence, shelf UI, alignment, retake, keyboard shortcuts
